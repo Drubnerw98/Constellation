@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import type { Graph, GraphNode, GraphEdge } from "../../types/graph";
+import type { Graph, GraphNode, GraphEdge, ThemeCluster } from "../../types/graph";
 
 interface Props {
   graph: Graph;
@@ -8,10 +8,17 @@ interface Props {
 
 const CANVAS_W = 1200;
 const CANVAS_H = 800;
-const NODE_RADIUS = 7;
+const NODE_RADIUS = 6;
 
-function seededStars(count: number): { x: number; y: number; r: number; o: number }[] {
-  const out: { x: number; y: number; r: number; o: number }[] = [];
+interface Star {
+  x: number;
+  y: number;
+  r: number;
+  o: number;
+}
+
+function seededStars(count: number, anchorCount: number): Star[] {
+  const out: Star[] = [];
   let seed = 1337;
   const rand = () => {
     seed = (seed * 1664525 + 1013904223) % 0x100000000;
@@ -21,11 +28,32 @@ function seededStars(count: number): { x: number; y: number; r: number; o: numbe
     out.push({
       x: rand() * CANVAS_W,
       y: rand() * CANVAS_H,
-      r: 0.4 + rand() * 1.1,
-      o: 0.18 + rand() * 0.5,
+      r: 0.4 + rand() * 1.0,
+      o: 0.18 + rand() * 0.45,
+    });
+  }
+  for (let i = 0; i < anchorCount; i++) {
+    out.push({
+      x: rand() * CANVAS_W,
+      y: rand() * CANVAS_H,
+      r: 1.6 + rand() * 1.0,
+      o: 0.6 + rand() * 0.3,
     });
   }
   return out;
+}
+
+function primaryClusterFor(
+  d: GraphNode,
+  byLabel: Map<string, ThemeCluster>,
+): ThemeCluster | null {
+  let primary: ThemeCluster | null = null;
+  for (const t of d.themes) {
+    const c = byLabel.get(t);
+    if (!c) continue;
+    if (!primary || c.weight > primary.weight) primary = c;
+  }
+  return primary;
 }
 
 export function ConstellationCanvas({ graph }: Props) {
@@ -33,8 +61,23 @@ export function ConstellationCanvas({ graph }: Props) {
   const simRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
   const [, setTick] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [pinnedNodeId, setPinnedNodeId] = useState<string | null>(null);
 
-  const stars = useMemo(() => seededStars(120), []);
+  const stars = useMemo(() => seededStars(110, 14), []);
+
+  const clusterByLabel = useMemo(
+    () => new Map(graph.clusters.map((c) => [c.label, c])),
+    [graph.clusters],
+  );
+
+  const nodeColor = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of graph.nodes) {
+      const c = primaryClusterFor(n, clusterByLabel);
+      map.set(n.id, c?.color ?? "#cbd5e1");
+    }
+    return map;
+  }, [graph.nodes, clusterByLabel]);
 
   const neighbors = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -49,16 +92,10 @@ export function ConstellationCanvas({ graph }: Props) {
   }, [graph]);
 
   useEffect(() => {
-    const { nodes, edges, clusters } = graph;
-    const clusterByLabel = new Map(clusters.map((c) => [c.label, c]));
+    const { nodes, edges } = graph;
 
     const targetFor = (d: GraphNode): { x: number; y: number } => {
-      let primary: (typeof clusters)[number] | null = null;
-      for (const t of d.themes) {
-        const c = clusterByLabel.get(t);
-        if (!c) continue;
-        if (!primary || c.weight > primary.weight) primary = c;
-      }
+      const primary = primaryClusterFor(d, clusterByLabel);
       return primary
         ? { x: primary.centerX, y: primary.centerY }
         : { x: CANVAS_W / 2, y: CANVAS_H / 2 };
@@ -96,7 +133,7 @@ export function ConstellationCanvas({ graph }: Props) {
       sim.stop();
       simRef.current = null;
     };
-  }, [graph]);
+  }, [graph, clusterByLabel]);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -137,19 +174,29 @@ export function ConstellationCanvas({ graph }: Props) {
   }, [graph]);
 
   const { nodes, edges, clusters } = graph;
-  const hoveredNode = hoveredNodeId
-    ? (nodes.find((n) => n.id === hoveredNodeId) ?? null)
+  const focusId = pinnedNodeId ?? hoveredNodeId;
+  const focusNode = focusId
+    ? (nodes.find((n) => n.id === focusId) ?? null)
     : null;
-  const hoverNeighbors = hoveredNodeId
-    ? (neighbors.get(hoveredNodeId) ?? new Set<string>())
+  const focusNeighbors = focusId
+    ? (neighbors.get(focusId) ?? new Set<string>())
     : new Set<string>();
 
   const isDimmed = (id: string): boolean =>
-    hoveredNodeId !== null && id !== hoveredNodeId && !hoverNeighbors.has(id);
+    focusId !== null && id !== focusId && !focusNeighbors.has(id);
   const isEdgeActive = (s: string, t: string): boolean =>
-    hoveredNodeId !== null && (s === hoveredNodeId || t === hoveredNodeId);
+    focusId !== null && (s === focusId || t === focusId);
   const isEdgeDimmed = (s: string, t: string): boolean =>
-    hoveredNodeId !== null && !isEdgeActive(s, t);
+    focusId !== null && !isEdgeActive(s, t);
+
+  const handleNodeClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPinnedNodeId((cur) => (cur === id ? null : id));
+  };
+
+  const handleBackgroundClick = () => {
+    setPinnedNodeId(null);
+  };
 
   return (
     <svg
@@ -157,6 +204,7 @@ export function ConstellationCanvas({ graph }: Props) {
       viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
       preserveAspectRatio="xMidYMid meet"
       className="h-full w-full"
+      onClick={handleBackgroundClick}
     >
       <defs>
         {clusters.map((c, i) => (
@@ -173,7 +221,10 @@ export function ConstellationCanvas({ graph }: Props) {
             <stop offset="100%" stopColor={c.color} stopOpacity={0} />
           </radialGradient>
         ))}
-        <filter id="node-glow" x="-50%" y="-50%" width="200%" height="200%">
+        <filter id="node-halo" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="4" />
+        </filter>
+        <filter id="node-glow-strong" x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="2.5" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
@@ -207,23 +258,6 @@ export function ConstellationCanvas({ graph }: Props) {
         ))}
       </g>
 
-      <g className="cluster-labels">
-        {clusters.map((c) => (
-          <text
-            key={c.label}
-            x={c.centerX}
-            y={c.centerY + c.radius + 18}
-            textAnchor="middle"
-            fill={c.color}
-            opacity={0.42}
-            fontSize={11}
-            style={{ pointerEvents: "none", letterSpacing: "0.04em" }}
-          >
-            {c.label}
-          </text>
-        ))}
-      </g>
-
       <g className="edges">
         {edges.map((e, i) => {
           const s = e.source as GraphNode;
@@ -231,9 +265,9 @@ export function ConstellationCanvas({ graph }: Props) {
           if (typeof s !== "object" || typeof t !== "object") return null;
           const active = isEdgeActive(s.id, t.id);
           const dimmed = isEdgeDimmed(s.id, t.id);
-          const opacity = active ? 0.85 : dimmed ? 0.05 : 0.22;
+          const opacity = active ? 0.85 : dimmed ? 0.04 : 0.1;
           const stroke = active ? "#fef3c7" : "#9aa4b2";
-          const width = (0.5 + e.strength * 1.5) * (active ? 1.6 : 1);
+          const width = (0.5 + e.strength * 1.4) * (active ? 1.6 : 1);
           return (
             <line
               key={i}
@@ -249,85 +283,159 @@ export function ConstellationCanvas({ graph }: Props) {
         })}
       </g>
 
-      <g className="nodes">
+      <g className="cluster-labels">
+        {clusters.map((c) => (
+          <text
+            key={c.label}
+            x={c.centerX}
+            y={c.centerY + c.radius + 18}
+            textAnchor="middle"
+            fill={c.color}
+            opacity={0.65}
+            fontSize={11}
+            style={{
+              pointerEvents: "none",
+              letterSpacing: "0.05em",
+              paintOrder: "stroke fill",
+              stroke: "#05060a",
+              strokeWidth: 3,
+              strokeLinejoin: "round",
+            }}
+          >
+            {c.label}
+          </text>
+        ))}
+      </g>
+
+      <g className="node-halos" style={{ pointerEvents: "none" }}>
         {nodes.map((n) => {
           const dimmed = isDimmed(n.id);
-          const isHover = n.id === hoveredNodeId;
-          const isNeighbor = hoverNeighbors.has(n.id);
-          const r = isHover
-            ? NODE_RADIUS * 1.6
-            : isNeighbor
-              ? NODE_RADIUS * 1.2
-              : NODE_RADIUS;
-          const opacity = dimmed ? 0.35 : 1;
+          const isFocus = n.id === focusId;
+          const isNeighbor = focusNeighbors.has(n.id);
+          const baseR = NODE_RADIUS;
+          const r = isFocus ? baseR * 4.2 : isNeighbor ? baseR * 3.2 : baseR * 2.6;
+          const opacity = dimmed ? 0.1 : isFocus ? 0.85 : 0.55;
           return (
             <circle
               key={n.id}
-              data-id={n.id}
-              className="node cursor-grab active:cursor-grabbing"
               cx={n.x ?? 0}
               cy={n.y ?? 0}
               r={r}
-              fill={isHover ? "#fef3c7" : "#f5f7fa"}
-              stroke="#0b1020"
-              strokeWidth={1}
+              fill={nodeColor.get(n.id) ?? "#cbd5e1"}
               opacity={opacity}
-              filter={isHover ? "url(#node-glow)" : undefined}
-              onMouseEnter={() => setHoveredNodeId(n.id)}
-              onMouseLeave={() =>
-                setHoveredNodeId((cur) => (cur === n.id ? null : cur))
-              }
+              filter="url(#node-halo)"
             />
           );
         })}
       </g>
 
-      {hoveredNode && (
+      <g className="nodes">
+        {nodes.map((n) => {
+          const dimmed = isDimmed(n.id);
+          const isFocus = n.id === focusId;
+          const isNeighbor = focusNeighbors.has(n.id);
+          const r = isFocus
+            ? NODE_RADIUS * 1.55
+            : isNeighbor
+              ? NODE_RADIUS * 1.2
+              : NODE_RADIUS;
+          const opacity = dimmed ? 0.4 : 1;
+          const color = nodeColor.get(n.id) ?? "#cbd5e1";
+          return (
+            <circle
+              key={n.id}
+              data-id={n.id}
+              className="node cursor-pointer"
+              cx={n.x ?? 0}
+              cy={n.y ?? 0}
+              r={r}
+              fill="#fefce8"
+              stroke={color}
+              strokeWidth={isFocus ? 2 : 1.4}
+              opacity={opacity}
+              filter={isFocus ? "url(#node-glow-strong)" : undefined}
+              onMouseEnter={() => setHoveredNodeId(n.id)}
+              onMouseLeave={() =>
+                setHoveredNodeId((cur) => (cur === n.id ? null : cur))
+              }
+              onClick={(e) => handleNodeClick(n.id, e)}
+            />
+          );
+        })}
+      </g>
+
+      {pinnedNodeId !== null && focusNode && (
+        <circle
+          cx={focusNode.x ?? 0}
+          cy={focusNode.y ?? 0}
+          r={NODE_RADIUS * 2.4}
+          fill="none"
+          stroke={nodeColor.get(focusNode.id) ?? "#fefce8"}
+          strokeWidth={1}
+          strokeOpacity={0.55}
+          strokeDasharray="3 3"
+          style={{ pointerEvents: "none" }}
+        />
+      )}
+
+      {focusNode && (
         <foreignObject
-          x={(hoveredNode.x ?? 0) + 14}
-          y={(hoveredNode.y ?? 0) - 10}
+          x={(focusNode.x ?? 0) + 14}
+          y={(focusNode.y ?? 0) - 10}
           width={280}
-          height={220}
+          height={260}
           style={{ overflow: "visible", pointerEvents: "none" }}
         >
           <div
             className="rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-2 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur"
             style={{ width: "fit-content", maxWidth: 260 }}
           >
-            <div className="text-sm font-medium text-white">
-              {hoveredNode.title}
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-medium text-white">
+                {focusNode.title}
+              </div>
+              {pinnedNodeId !== null && (
+                <div className="text-[9px] uppercase tracking-wider text-zinc-500">
+                  pinned
+                </div>
+              )}
             </div>
             <div className="mt-0.5 text-[11px] text-zinc-400">
-              {hoveredNode.mediaType}
-              {hoveredNode.year ? ` · ${hoveredNode.year}` : ""}
-              {hoveredNode.rating !== null
-                ? ` · ${hoveredNode.rating}★`
-                : hoveredNode.matchScore !== null
-                  ? ` · ${Math.round(hoveredNode.matchScore * 100)}% match`
+              {focusNode.mediaType}
+              {focusNode.year ? ` · ${focusNode.year}` : ""}
+              {focusNode.rating !== null
+                ? ` · ${focusNode.rating}★`
+                : focusNode.matchScore !== null
+                  ? ` · ${Math.round(focusNode.matchScore * 100)}% match`
                   : ""}
             </div>
-            {hoveredNode.themes.length > 0 && (
+            {focusNode.themes.length > 0 && (
               <div className="mt-2 text-[11px] text-zinc-300">
                 <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
                   Themes
                 </div>
                 <ul className="space-y-0.5">
-                  {hoveredNode.themes.map((t) => (
+                  {focusNode.themes.map((t) => (
                     <li key={t}>· {t}</li>
                   ))}
                 </ul>
               </div>
             )}
-            {hoveredNode.archetypes.length > 0 && (
+            {focusNode.archetypes.length > 0 && (
               <div className="mt-2 text-[11px] text-zinc-300">
                 <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
                   Archetypes
                 </div>
                 <ul className="space-y-0.5">
-                  {hoveredNode.archetypes.map((a) => (
+                  {focusNode.archetypes.map((a) => (
                     <li key={a}>· {a}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+            {pinnedNodeId === null && (
+              <div className="mt-2 text-[10px] italic text-zinc-500">
+                click to pin
               </div>
             )}
           </div>

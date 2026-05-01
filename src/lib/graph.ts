@@ -13,7 +13,8 @@ import { colorForThemeIndex } from "./colors";
 
 const CANVAS_W = 1200;
 const CANVAS_H = 800;
-const MIN_EDGE_STRENGTH = 0.25;
+const MIN_EDGE_STRENGTH = 0.4;
+const MAX_EDGES_PER_NODE = 4;
 
 function normalize(title: string): string {
   return title.trim().toLowerCase().replace(/\s+/g, " ");
@@ -88,7 +89,7 @@ export function buildGraph(
 
   const nodes = Array.from(nodesByTitle.values());
 
-  const edges: GraphEdge[] = [];
+  const candidates: GraphEdge[] = [];
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i]!;
@@ -105,7 +106,7 @@ export function buildGraph(
       );
       const strength = maxPossible === 0 ? 0 : shared / maxPossible;
       if (strength < MIN_EDGE_STRENGTH) continue;
-      edges.push({
+      candidates.push({
         source: a.id,
         target: b.id,
         sharedThemes,
@@ -113,6 +114,23 @@ export function buildGraph(
         strength,
       });
     }
+  }
+
+  // Cap edges per node to the top-K strongest. An edge survives if it falls in
+  // either endpoint's top-K — biases the visible graph toward the connections
+  // each node "cares about most" while still preserving asymmetric ties.
+  const sorted = [...candidates].sort((x, y) => y.strength - x.strength);
+  const perNodeCount = new Map<string, number>();
+  const edges: GraphEdge[] = [];
+  for (const e of sorted) {
+    const sId = typeof e.source === "string" ? e.source : e.source.id;
+    const tId = typeof e.target === "string" ? e.target : e.target.id;
+    const sCount = perNodeCount.get(sId) ?? 0;
+    const tCount = perNodeCount.get(tId) ?? 0;
+    if (sCount >= MAX_EDGES_PER_NODE && tCount >= MAX_EDGES_PER_NODE) continue;
+    perNodeCount.set(sId, sCount + 1);
+    perNodeCount.set(tId, tCount + 1);
+    edges.push(e);
   }
 
   const clusters: ThemeCluster[] = profile.themes.map((theme, i) => {

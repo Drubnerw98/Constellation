@@ -202,4 +202,34 @@ describe("buildGraph", () => {
     const gamma = clusters.find((c) => c.label === "gamma")!;
     expect(alpha.radius).toBeGreaterThan(gamma.radius);
   });
+
+  it("caps the edge mesh via the top-K-per-node rule", () => {
+    // 6 titles all sharing one theme. Without a cap the graph is the complete
+    // graph K6 = 15 edges. With MAX_EDGES_PER_NODE=4 the densest pair drops
+    // because both endpoints have already filled their slack. Asserting on the
+    // shape (count strictly less than complete + every node still connected)
+    // rather than an exact integer keeps the test robust to algorithm tweaks.
+    const lib: LibraryItem[] = Array.from({ length: 6 }, (_, i) => ({
+      id: `n${i}`,
+      title: `Title ${i}`,
+      mediaType: "movie" as const,
+      year: 2000 + i,
+      rating: 5,
+      source: "library" as const,
+      tasteTags: ["alpha"],
+    }));
+    const { edges, nodes } = buildGraph(baseProfile, lib, []);
+    expect(edges.length).toBeLessThan(15);
+    expect(edges.length).toBeGreaterThan(0);
+    const degree = new Map<string, number>();
+    for (const e of edges) {
+      const s = typeof e.source === "string" ? e.source : e.source.id;
+      const t = typeof e.target === "string" ? e.target : e.target.id;
+      degree.set(s, (degree.get(s) ?? 0) + 1);
+      degree.set(t, (degree.get(t) ?? 0) + 1);
+    }
+    for (const n of nodes) {
+      expect(degree.get(n.id) ?? 0).toBeGreaterThan(0);
+    }
+  });
 });
