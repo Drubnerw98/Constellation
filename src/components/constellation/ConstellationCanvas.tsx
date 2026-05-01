@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as d3 from "d3";
 import type { Graph, GraphNode, GraphEdge, ThemeCluster } from "../../types/graph";
 
@@ -7,6 +14,10 @@ interface Props {
   selectedNodeId: string | null;
   onSelect: (id: string | null) => void;
   activeFormats: Set<GraphNode["mediaType"]>;
+}
+
+export interface ConstellationCanvasHandle {
+  panToNode: (id: string) => void;
 }
 
 const CANVAS_W = 1200;
@@ -59,12 +70,13 @@ function primaryClusterFor(
   return primary;
 }
 
-export function ConstellationCanvas({
-  graph,
-  selectedNodeId,
-  onSelect,
-  activeFormats,
-}: Props) {
+export const ConstellationCanvas = forwardRef<
+  ConstellationCanvasHandle,
+  Props
+>(function ConstellationCanvas(
+  { graph, selectedNodeId, onSelect, activeFormats },
+  ref,
+) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<
@@ -299,6 +311,25 @@ export function ConstellationCanvas({
       .duration(700)
       .call(zoom.transform, d3.zoomIdentity);
   };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      panToNode: (id: string) => {
+        const svg = svgRef.current;
+        const zoom = zoomBehaviorRef.current;
+        const node = graph.nodes.find((n) => n.id === id);
+        if (!svg || !zoom || !node) return;
+        const k = 1.8;
+        const tx = CANVAS_W / 2 - (node.x ?? CANVAS_W / 2) * k;
+        const ty = CANVAS_H / 2 - (node.y ?? CANVAS_H / 2) * k;
+        const next = d3.zoomIdentity.translate(tx, ty).scale(k);
+        setFocusedClusterLabel(null);
+        d3.select(svg).transition().duration(700).call(zoom.transform, next);
+      },
+    }),
+    [graph],
+  );
 
   const flyToCluster = (label: string) => {
     const svg = svgRef.current;
@@ -586,7 +617,7 @@ export function ConstellationCanvas({
       })()}
 
       {(isZoomed || inGalaxyMode) && (
-        <foreignObject x={20} y={20} width={240} height={40}>
+        <foreignObject x={20} y={CANVAS_H - 56} width={240} height={40}>
           <button
             type="button"
             onClick={(e) => {
@@ -601,4 +632,4 @@ export function ConstellationCanvas({
       )}
     </svg>
   );
-}
+});

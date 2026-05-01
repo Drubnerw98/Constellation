@@ -1,7 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
-import { ConstellationCanvas } from "./components/constellation/ConstellationCanvas";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  ConstellationCanvas,
+  type ConstellationCanvasHandle,
+} from "./components/constellation/ConstellationCanvas";
 import { DetailPanel } from "./components/constellation/DetailPanel";
 import { FilterBar } from "./components/controls/FilterBar";
+import { SearchInput } from "./components/controls/SearchInput";
 import {
   sampleProfile,
   sampleLibrary,
@@ -24,6 +28,7 @@ export function App() {
     () => buildGraph(sampleProfile, sampleLibrary, sampleRecommendations),
     [],
   );
+  const canvasRef = useRef<ConstellationCanvasHandle>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [activeFormats, setActiveFormats] = useState<Set<MediaType>>(
     () => new Set(ALL_FORMATS),
@@ -46,14 +51,21 @@ export function App() {
     setActiveFormats(new Set(ALL_FORMATS));
   }, []);
 
+  const handleSearchPick = useCallback((id: string) => {
+    setSelectedNodeId(id);
+    canvasRef.current?.panToNode(id);
+  }, []);
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#05060a] text-white">
       <ConstellationCanvas
+        ref={canvasRef}
         graph={graph}
         selectedNodeId={selectedNodeId}
         onSelect={setSelectedNodeId}
         activeFormats={activeFormats}
       />
+      <SearchInput graph={graph} onPick={handleSearchPick} />
       <FilterBar
         activeFormats={activeFormats}
         onToggle={toggleFormat}
