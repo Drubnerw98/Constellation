@@ -299,27 +299,32 @@ export function ConstellationCanvas({ graph }: Props) {
       </g>
 
       <g className="cluster-labels">
-        {clusters.map((c) => (
-          <text
-            key={c.label}
-            x={c.centerX}
-            y={c.centerY + c.radius + 18}
-            textAnchor="middle"
-            fill={c.color}
-            opacity={0.65}
-            fontSize={11}
-            style={{
-              pointerEvents: "none",
-              letterSpacing: "0.05em",
-              paintOrder: "stroke fill",
-              stroke: "#05060a",
-              strokeWidth: 3,
-              strokeLinejoin: "round",
-            }}
-          >
-            {c.label}
-          </text>
-        ))}
+        {clusters.map((c) => {
+          const belowY = c.centerY + c.radius + 18;
+          const aboveY = c.centerY - c.radius - 8;
+          const labelY = belowY > CANVAS_H - 8 ? aboveY : belowY;
+          return (
+            <text
+              key={c.label}
+              x={c.centerX}
+              y={labelY}
+              textAnchor="middle"
+              fill={c.color}
+              opacity={0.65}
+              fontSize={11}
+              style={{
+                pointerEvents: "none",
+                letterSpacing: "0.05em",
+                paintOrder: "stroke fill",
+                stroke: "#05060a",
+                strokeWidth: 3,
+                strokeLinejoin: "round",
+              }}
+            >
+              {c.label}
+            </text>
+          );
+        })}
       </g>
 
       <g className="node-halos" style={{ pointerEvents: "none" }}>
