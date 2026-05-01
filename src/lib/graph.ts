@@ -135,7 +135,7 @@ export function buildGraph(
 
   const clusters: ThemeCluster[] = profile.themes.map((theme, i) => {
     const angle = (i / profile.themes.length) * Math.PI * 2 - Math.PI / 2;
-    const orbitRadius = Math.min(CANVAS_W, CANVAS_H) * 0.38;
+    const orbitRadius = Math.min(CANVAS_W, CANVAS_H) * 0.32;
     const memberNodeIds = nodes
       .filter((n) => n.themes.includes(theme.label))
       .map((n) => n.id);

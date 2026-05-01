@@ -126,7 +126,22 @@ export function ConstellationCanvas({ graph }: Props) {
       )
       .alpha(1)
       .alphaDecay(0.02)
-      .on("tick", () => setTick((t) => t + 1));
+      .on("tick", () => {
+        // Clamp node positions inside the viewBox so halos never crop at the
+        // edges. Padding accounts for the largest halo radius (focused state).
+        const padding = NODE_RADIUS * 4.5;
+        for (const n of nodes) {
+          if (n.x !== undefined) {
+            if (n.x < padding) n.x = padding;
+            else if (n.x > CANVAS_W - padding) n.x = CANVAS_W - padding;
+          }
+          if (n.y !== undefined) {
+            if (n.y < padding) n.y = padding;
+            else if (n.y > CANVAS_H - padding) n.y = CANVAS_H - padding;
+          }
+        }
+        setTick((t) => t + 1);
+      });
 
     simRef.current = sim;
     return () => {
@@ -378,12 +393,22 @@ export function ConstellationCanvas({ graph }: Props) {
         />
       )}
 
-      {focusNode && (
+      {focusNode && (() => {
+        const TOOLTIP_W = 260;
+        const TOOLTIP_H = 240;
+        const OFFSET = 14;
+        const nx = focusNode.x ?? 0;
+        const ny = focusNode.y ?? 0;
+        const placeRight = nx < CANVAS_W / 2;
+        const placeBelow = ny < CANVAS_H / 2;
+        const tx = placeRight ? nx + OFFSET : nx - OFFSET - TOOLTIP_W;
+        const ty = placeBelow ? ny + OFFSET : ny - OFFSET - TOOLTIP_H;
+        return (
         <foreignObject
-          x={(focusNode.x ?? 0) + 14}
-          y={(focusNode.y ?? 0) - 10}
-          width={280}
-          height={260}
+          x={tx}
+          y={ty}
+          width={TOOLTIP_W}
+          height={TOOLTIP_H}
           style={{ overflow: "visible", pointerEvents: "none" }}
         >
           <div
@@ -440,7 +465,8 @@ export function ConstellationCanvas({ graph }: Props) {
             )}
           </div>
         </foreignObject>
-      )}
+        );
+      })()}
     </svg>
   );
 }
