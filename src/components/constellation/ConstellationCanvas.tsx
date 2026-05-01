@@ -65,8 +65,15 @@ export function ConstellationCanvas({
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<
+    SVGSVGElement,
+    unknown
+  > | null>(null);
   const [, setTick] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [transform, setTransform] = useState<d3.ZoomTransform>(
+    d3.zoomIdentity,
+  );
 
   const stars = useMemo(() => seededStars(110, 14), []);
 
@@ -193,6 +200,49 @@ export function ConstellationCanvas({
       .call(drag);
   }, [graph]);
 
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const zoom = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.6, 4])
+      .translateExtent([
+        [-CANVAS_W * 0.5, -CANVAS_H * 0.5],
+        [CANVAS_W * 1.5, CANVAS_H * 1.5],
+      ])
+      .filter((event: Event) => {
+        // Wheel zoom always allowed. For drag-pan, skip if the gesture starts
+        // on a node so node-drag wins, and skip on right-click.
+        if (event.type === "wheel") return true;
+        if ((event as MouseEvent).button !== 0 && event.type !== "touchstart")
+          return false;
+        const target = event.target as Element | null;
+        if (!target) return true;
+        return target.closest("circle.node") === null;
+      })
+      .on("zoom", (event) => {
+        setTransform(event.transform);
+      });
+
+    zoomBehaviorRef.current = zoom;
+    d3.select(svg).call(zoom).on("dblclick.zoom", null);
+    // Wire double-click to reset to identity instead of d3-zoom's default
+    // double-click behavior (which zooms in 2x).
+    d3.select(svg).on("dblclick", (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest("circle.node")) return;
+      d3.select(svg)
+        .transition()
+        .duration(450)
+        .call(zoom.transform, d3.zoomIdentity);
+    });
+    return () => {
+      d3.select(svg).on(".zoom", null).on("dblclick", null);
+      zoomBehaviorRef.current = null;
+    };
+  }, []);
+
   const { nodes, edges, clusters } = graph;
   // Hover wins over selection for visual highlights — lets the user preview
   // other nodes' connections while the detail panel still shows the pinned one.
@@ -222,6 +272,16 @@ export function ConstellationCanvas({
   const handleBackgroundClick = () => {
     onSelect(null);
   };
+
+  const resetView = () => {
+    const svg = svgRef.current;
+    const zoom = zoomBehaviorRef.current;
+    if (!svg || !zoom) return;
+    d3.select(svg).transition().duration(450).call(zoom.transform, d3.zoomIdentity);
+  };
+
+  const isZoomed =
+    transform.k !== 1 || transform.x !== 0 || transform.y !== 0;
 
   return (
     <svg
@@ -257,6 +317,8 @@ export function ConstellationCanvas({
           </feMerge>
         </filter>
       </defs>
+
+      <g className="zoom-layer" transform={transform.toString()}>
 
       <g className="starfield">
         {stars.map((s, i) => (
@@ -394,11 +456,13 @@ export function ConstellationCanvas({
         })}
       </g>
 
+      </g>
+
       {selectedNode && (
         <circle
-          cx={selectedNode.x ?? 0}
-          cy={selectedNode.y ?? 0}
-          r={NODE_RADIUS * 2.4}
+          cx={transform.applyX(selectedNode.x ?? 0)}
+          cy={transform.applyY(selectedNode.y ?? 0)}
+          r={NODE_RADIUS * 2.4 * transform.k}
           fill="none"
           stroke={nodeColor.get(selectedNode.id) ?? "#fefce8"}
           strokeWidth={1}
@@ -412,8 +476,8 @@ export function ConstellationCanvas({
         const TOOLTIP_W = 220;
         const TOOLTIP_H = 60;
         const OFFSET = 14;
-        const nx = hoveredNode.x ?? 0;
-        const ny = hoveredNode.y ?? 0;
+        const nx = transform.applyX(hoveredNode.x ?? 0);
+        const ny = transform.applyY(hoveredNode.y ?? 0);
         const placeRight = nx < CANVAS_W / 2;
         const placeBelow = ny < CANVAS_H / 2;
         const tx = placeRight ? nx + OFFSET : nx - OFFSET - TOOLTIP_W;
@@ -446,6 +510,21 @@ export function ConstellationCanvas({
           </foreignObject>
         );
       })()}
+
+      {isZoomed && (
+        <foreignObject x={20} y={20} width={150} height={40}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              resetView();
+            }}
+            className="rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-1.5 text-xs text-zinc-200 backdrop-blur-md transition-colors hover:bg-white/10"
+          >
+            ↺ Reset view
+          </button>
+        </foreignObject>
+      )}
     </svg>
   );
 }
