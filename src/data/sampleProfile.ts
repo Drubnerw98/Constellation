@@ -250,10 +250,7 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2019,
     rating: 5,
     source: "library",
-    tasteTags: [
-      "found meaning over inherited meaning",
-      "interior collapse rendered as world-building",
-    ],
+    tasteTags: ["found meaning over inherited meaning"],
   },
   {
     id: "lib-mushishi",
@@ -262,10 +259,7 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2005,
     rating: 4,
     source: "library",
-    tasteTags: [
-      "found meaning over inherited meaning",
-      "interior collapse rendered as world-building",
-    ],
+    tasteTags: ["found meaning over inherited meaning"],
   },
   {
     id: "lib-vagabond",
