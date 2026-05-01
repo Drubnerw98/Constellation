@@ -90,6 +90,9 @@ export const ConstellationCanvas = forwardRef<
   > | null>(null);
   const [, setTick] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [hoveredClusterLabel, setHoveredClusterLabel] = useState<string | null>(
+    null,
+  );
   const [transform, setTransform] = useState<d3.ZoomTransform>(
     d3.zoomIdentity,
   );
@@ -357,6 +360,11 @@ export const ConstellationCanvas = forwardRef<
     const node = nodes.find((n) => n.id === id);
     return node?.themes.includes(focusedClusterLabel) ?? false;
   };
+  const inHoveredCluster = (id: string): boolean => {
+    if (!hoveredClusterLabel) return false;
+    const node = nodes.find((n) => n.id === id);
+    return node?.themes.includes(hoveredClusterLabel) ?? false;
+  };
   const matchesFormat = (id: string): boolean => {
     const node = nodes.find((n) => n.id === id);
     return node ? activeFormats.has(node.mediaType) : true;
@@ -417,12 +425,16 @@ export const ConstellationCanvas = forwardRef<
           const dim =
             focusedClusterLabel !== null && c.label !== focusedClusterLabel;
           const isFocused = c.label === focusedClusterLabel;
+          const isHovered =
+            !inGalaxyMode && c.label === hoveredClusterLabel;
+          const r =
+            c.radius * (isFocused ? 1.9 : isHovered ? 1.75 : 1.6);
           return (
             <circle
               key={c.label}
               cx={c.centerX}
               cy={c.centerY}
-              r={c.radius * (isFocused ? 1.9 : 1.6)}
+              r={r}
               fill={`url(#cluster-grad-${i})`}
               opacity={dim ? 0.18 : 1}
               className="cursor-pointer"
@@ -430,6 +442,12 @@ export const ConstellationCanvas = forwardRef<
                 e.stopPropagation();
                 flyToCluster(c.label);
               }}
+              onMouseEnter={() => setHoveredClusterLabel(c.label)}
+              onMouseLeave={() =>
+                setHoveredClusterLabel((cur) =>
+                  cur === c.label ? null : cur,
+                )
+              }
             />
           );
         })}
@@ -448,6 +466,11 @@ export const ConstellationCanvas = forwardRef<
           let opacity = active ? 0.85 : dimmed ? 0.04 : 0.1;
           if (galaxyDim) opacity *= 0.2;
           if (!matchesFormat(s.id) || !matchesFormat(t.id)) opacity *= 0.05;
+          const clusterHoverDim =
+            hoveredClusterLabel !== null &&
+            !inGalaxyMode &&
+            !(inHoveredCluster(s.id) && inHoveredCluster(t.id));
+          if (clusterHoverDim) opacity *= 0.25;
           const stroke = active ? "#fef3c7" : "#9aa4b2";
           const width = (0.5 + e.strength * 1.4) * (active ? 1.6 : 1);
           return (
@@ -471,9 +494,17 @@ export const ConstellationCanvas = forwardRef<
           const aboveY = c.centerY - c.radius - 8;
           const labelY = belowY > CANVAS_H - 8 ? aboveY : belowY;
           const isFocused = c.label === focusedClusterLabel;
+          const isHovered =
+            !inGalaxyMode && c.label === hoveredClusterLabel;
           const dim =
             focusedClusterLabel !== null && !isFocused;
-          const opacity = isFocused ? 0.95 : dim ? 0.2 : 0.65;
+          const opacity = isFocused
+            ? 0.95
+            : isHovered
+              ? 0.95
+              : dim
+                ? 0.2
+                : 0.65;
           return (
             <text
               key={c.label}
@@ -482,7 +513,7 @@ export const ConstellationCanvas = forwardRef<
               textAnchor="middle"
               fill={c.color}
               opacity={opacity}
-              fontSize={isFocused ? 13 : 11}
+              fontSize={isFocused || isHovered ? 13 : 11}
               style={{
                 pointerEvents: "none",
                 letterSpacing: "0.05em",
@@ -508,6 +539,12 @@ export const ConstellationCanvas = forwardRef<
           let opacity = dimmed ? 0.1 : isFocus ? 0.85 : 0.55;
           if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
           if (!activeFormats.has(n.mediaType)) opacity *= 0.1;
+          if (
+            hoveredClusterLabel !== null &&
+            !inGalaxyMode &&
+            !inHoveredCluster(n.id)
+          )
+            opacity *= 0.3;
           return (
             <circle
               key={n.id}
@@ -536,6 +573,12 @@ export const ConstellationCanvas = forwardRef<
           if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
           const filteredOut = !activeFormats.has(n.mediaType);
           if (filteredOut) opacity *= 0.1;
+          if (
+            hoveredClusterLabel !== null &&
+            !inGalaxyMode &&
+            !inHoveredCluster(n.id)
+          )
+            opacity *= 0.3;
           const color = nodeColor.get(n.id) ?? "#cbd5e1";
           return (
             <circle
