@@ -427,28 +427,45 @@ export const ConstellationCanvas = forwardRef<
           const isFocused = c.label === focusedClusterLabel;
           const isHovered =
             !inGalaxyMode && c.label === hoveredClusterLabel;
-          const r =
+          const visualR =
             c.radius * (isFocused ? 1.9 : isHovered ? 1.75 : 1.6);
+          // Hit area is intentionally smaller than the visual gradient: the
+          // gradient bleeds far past the cluster's actual node cloud, and big
+          // overlapping hit areas were thrashing the hovered-cluster state on
+          // every mouse move. 110px keeps adjacent clusters from overlapping
+          // even at the highest theme weight.
+          const hitR = Math.min(c.radius, 110);
           return (
-            <circle
-              key={c.label}
-              cx={c.centerX}
-              cy={c.centerY}
-              r={r}
-              fill={`url(#cluster-grad-${i})`}
-              opacity={dim ? 0.18 : 1}
-              className="cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                flyToCluster(c.label);
-              }}
-              onMouseEnter={() => setHoveredClusterLabel(c.label)}
-              onMouseLeave={() =>
-                setHoveredClusterLabel((cur) =>
-                  cur === c.label ? null : cur,
-                )
-              }
-            />
+            <g key={c.label}>
+              <circle
+                cx={c.centerX}
+                cy={c.centerY}
+                r={visualR}
+                fill={`url(#cluster-grad-${i})`}
+                opacity={dim ? 0.18 : 1}
+                style={{
+                  pointerEvents: "none",
+                  transition: "opacity 220ms ease, r 220ms ease",
+                }}
+              />
+              <circle
+                cx={c.centerX}
+                cy={c.centerY}
+                r={hitR}
+                fill="transparent"
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  flyToCluster(c.label);
+                }}
+                onMouseEnter={() => setHoveredClusterLabel(c.label)}
+                onMouseLeave={() =>
+                  setHoveredClusterLabel((cur) =>
+                    cur === c.label ? null : cur,
+                  )
+                }
+              />
+            </g>
           );
         })}
       </g>
@@ -483,6 +500,7 @@ export const ConstellationCanvas = forwardRef<
               stroke={stroke}
               strokeOpacity={opacity}
               strokeWidth={width}
+              style={{ transition: "stroke-opacity 200ms ease" }}
             />
           );
         })}
@@ -521,6 +539,7 @@ export const ConstellationCanvas = forwardRef<
                 stroke: "#05060a",
                 strokeWidth: 3,
                 strokeLinejoin: "round",
+                transition: "opacity 220ms ease, font-size 220ms ease",
               }}
             >
               {c.label}
@@ -554,6 +573,7 @@ export const ConstellationCanvas = forwardRef<
               fill={nodeColor.get(n.id) ?? "#cbd5e1"}
               opacity={opacity}
               filter="url(#node-halo)"
+              style={{ transition: "opacity 200ms ease, r 200ms ease" }}
             />
           );
         })}
@@ -593,7 +613,10 @@ export const ConstellationCanvas = forwardRef<
               strokeWidth={isFocus ? 2 : 1.4}
               opacity={opacity}
               filter={isFocus ? "url(#node-glow-strong)" : undefined}
-              style={filteredOut ? { pointerEvents: "none" } : undefined}
+              style={{
+                transition: "opacity 200ms ease, r 180ms ease",
+                pointerEvents: filteredOut ? "none" : undefined,
+              }}
               onMouseEnter={() => setHoveredNodeId(n.id)}
               onMouseLeave={() =>
                 setHoveredNodeId((cur) => (cur === n.id ? null : cur))
