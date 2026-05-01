@@ -79,6 +79,9 @@ export function ConstellationCanvas({
   const [transform, setTransform] = useState<d3.ZoomTransform>(
     d3.zoomIdentity,
   );
+  const [focusedClusterLabel, setFocusedClusterLabel] = useState<string | null>(
+    null,
+  );
 
   const stars = useMemo(() => seededStars(110, 14), []);
 
@@ -288,11 +291,39 @@ export function ConstellationCanvas({
     const svg = svgRef.current;
     const zoom = zoomBehaviorRef.current;
     if (!svg || !zoom) return;
-    d3.select(svg).transition().duration(450).call(zoom.transform, d3.zoomIdentity);
+    setFocusedClusterLabel(null);
+    d3.select(svg)
+      .transition()
+      .duration(700)
+      .call(zoom.transform, d3.zoomIdentity);
+  };
+
+  const flyToCluster = (label: string) => {
+    const svg = svgRef.current;
+    const zoom = zoomBehaviorRef.current;
+    const target = clusters.find((c) => c.label === label);
+    if (!svg || !zoom || !target) return;
+    if (focusedClusterLabel === label) {
+      // Clicking the focused cluster again exits galaxy mode.
+      resetView();
+      return;
+    }
+    const k = Math.min(CANVAS_W, CANVAS_H) / (target.radius * 4.2);
+    const tx = CANVAS_W / 2 - target.centerX * k;
+    const ty = CANVAS_H / 2 - target.centerY * k;
+    const next = d3.zoomIdentity.translate(tx, ty).scale(k);
+    setFocusedClusterLabel(label);
+    d3.select(svg).transition().duration(800).call(zoom.transform, next);
   };
 
   const isZoomed =
     transform.k !== 1 || transform.x !== 0 || transform.y !== 0;
+  const inGalaxyMode = focusedClusterLabel !== null;
+  const inFocusedCluster = (id: string): boolean => {
+    if (!focusedClusterLabel) return true;
+    const node = nodes.find((n) => n.id === id);
+    return node?.themes.includes(focusedClusterLabel) ?? false;
+  };
 
   return (
     <svg
@@ -345,15 +376,26 @@ export function ConstellationCanvas({
       </g>
 
       <g className="clusters">
-        {clusters.map((c, i) => (
-          <circle
-            key={c.label}
-            cx={c.centerX}
-            cy={c.centerY}
-            r={c.radius * 1.6}
-            fill={`url(#cluster-grad-${i})`}
-          />
-        ))}
+        {clusters.map((c, i) => {
+          const dim =
+            focusedClusterLabel !== null && c.label !== focusedClusterLabel;
+          const isFocused = c.label === focusedClusterLabel;
+          return (
+            <circle
+              key={c.label}
+              cx={c.centerX}
+              cy={c.centerY}
+              r={c.radius * (isFocused ? 1.9 : 1.6)}
+              fill={`url(#cluster-grad-${i})`}
+              opacity={dim ? 0.18 : 1}
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                flyToCluster(c.label);
+              }}
+            />
+          );
+        })}
       </g>
 
       <g className="edges">
@@ -363,7 +405,11 @@ export function ConstellationCanvas({
           if (typeof s !== "object" || typeof t !== "object") return null;
           const active = isEdgeActive(s.id, t.id);
           const dimmed = isEdgeDimmed(s.id, t.id);
-          const opacity = active ? 0.85 : dimmed ? 0.04 : 0.1;
+          const galaxyDim =
+            inGalaxyMode &&
+            !(inFocusedCluster(s.id) && inFocusedCluster(t.id));
+          let opacity = active ? 0.85 : dimmed ? 0.04 : 0.1;
+          if (galaxyDim) opacity *= 0.2;
           const stroke = active ? "#fef3c7" : "#9aa4b2";
           const width = (0.5 + e.strength * 1.4) * (active ? 1.6 : 1);
           return (
@@ -386,6 +432,10 @@ export function ConstellationCanvas({
           const belowY = c.centerY + c.radius + 18;
           const aboveY = c.centerY - c.radius - 8;
           const labelY = belowY > CANVAS_H - 8 ? aboveY : belowY;
+          const isFocused = c.label === focusedClusterLabel;
+          const dim =
+            focusedClusterLabel !== null && !isFocused;
+          const opacity = isFocused ? 0.95 : dim ? 0.2 : 0.65;
           return (
             <text
               key={c.label}
@@ -393,8 +443,8 @@ export function ConstellationCanvas({
               y={labelY}
               textAnchor="middle"
               fill={c.color}
-              opacity={0.65}
-              fontSize={11}
+              opacity={opacity}
+              fontSize={isFocused ? 13 : 11}
               style={{
                 pointerEvents: "none",
                 letterSpacing: "0.05em",
@@ -417,7 +467,8 @@ export function ConstellationCanvas({
           const isNeighbor = focusNeighbors.has(n.id);
           const baseR = NODE_RADIUS;
           const r = isFocus ? baseR * 4.2 : isNeighbor ? baseR * 3.2 : baseR * 2.6;
-          const opacity = dimmed ? 0.1 : isFocus ? 0.85 : 0.55;
+          let opacity = dimmed ? 0.1 : isFocus ? 0.85 : 0.55;
+          if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
           return (
             <circle
               key={n.id}
@@ -442,7 +493,8 @@ export function ConstellationCanvas({
             : isNeighbor
               ? NODE_RADIUS * 1.2
               : NODE_RADIUS;
-          const opacity = dimmed ? 0.4 : 1;
+          let opacity = dimmed ? 0.4 : 1;
+          if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
           const color = nodeColor.get(n.id) ?? "#cbd5e1";
           return (
             <circle
@@ -522,8 +574,8 @@ export function ConstellationCanvas({
         );
       })()}
 
-      {isZoomed && (
-        <foreignObject x={20} y={20} width={150} height={40}>
+      {(isZoomed || inGalaxyMode) && (
+        <foreignObject x={20} y={20} width={240} height={40}>
           <button
             type="button"
             onClick={(e) => {
@@ -532,7 +584,7 @@ export function ConstellationCanvas({
             }}
             className="rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-1.5 text-xs text-zinc-200 backdrop-blur-md transition-colors hover:bg-white/10"
           >
-            ↺ Reset view
+            {inGalaxyMode ? "← Back to constellation" : "↺ Reset view"}
           </button>
         </foreignObject>
       )}
