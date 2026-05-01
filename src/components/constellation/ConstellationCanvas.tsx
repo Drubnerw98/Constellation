@@ -99,8 +99,45 @@ export const ConstellationCanvas = forwardRef<
   const [focusedClusterLabel, setFocusedClusterLabel] = useState<string | null>(
     null,
   );
+  const [loadedNodeIds, setLoadedNodeIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [starfieldLit, setStarfieldLit] = useState(false);
+
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
 
   const stars = useMemo(() => seededStars(110, 14), []);
+
+  // Staggered fade-in on first load: stars come up first as a backdrop, then
+  // each title star twinkles in. Skipped under prefers-reduced-motion so
+  // accessibility users see the final state immediately.
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setStarfieldLit(true);
+      setLoadedNodeIds(new Set(graph.nodes.map((n) => n.id)));
+      return;
+    }
+    setStarfieldLit(false);
+    setLoadedNodeIds(new Set());
+    const fieldTimer = setTimeout(() => setStarfieldLit(true), 80);
+    const nodeTimers = graph.nodes.map((n, i) =>
+      setTimeout(() => {
+        setLoadedNodeIds((prev) => {
+          if (prev.has(n.id)) return prev;
+          const next = new Set(prev);
+          next.add(n.id);
+          return next;
+        });
+      }, 350 + i * 55),
+    );
+    return () => {
+      clearTimeout(fieldTimer);
+      nodeTimers.forEach(clearTimeout);
+    };
+  }, [graph, prefersReducedMotion]);
 
   const clusterByLabel = useMemo(
     () => new Map(graph.clusters.map((c) => [c.label, c])),
@@ -162,19 +199,32 @@ export const ConstellationCanvas = forwardRef<
         d3.forceY<GraphNode>((d) => targetFor(d).y).strength(0.4),
       )
       .alpha(1)
-      .alphaDecay(0.02)
+      .alphaDecay(prefersReducedMotion ? 0.05 : 0.02)
+      // alphaTarget keeps the simulation ticking gently forever (drift-on-
+      // rest). Constellation should feel like stars in slow orbital motion,
+      // not a frozen graph. 0 when prefers-reduced-motion so the layout
+      // settles and stays still for users who opted out of motion.
+      .alphaTarget(prefersReducedMotion ? 0 : 0.012)
       .on("tick", () => {
-        // Clamp node positions inside the viewBox so halos never crop at the
-        // edges. Padding accounts for the largest halo radius (focused state).
         const padding = NODE_RADIUS * 4.5;
         for (const n of nodes) {
           if (n.x !== undefined) {
-            if (n.x < padding) n.x = padding;
-            else if (n.x > CANVAS_W - padding) n.x = CANVAS_W - padding;
+            if (n.x < padding) {
+              n.x = padding;
+              n.vx = 0;
+            } else if (n.x > CANVAS_W - padding) {
+              n.x = CANVAS_W - padding;
+              n.vx = 0;
+            }
           }
           if (n.y !== undefined) {
-            if (n.y < padding) n.y = padding;
-            else if (n.y > CANVAS_H - padding) n.y = CANVAS_H - padding;
+            if (n.y < padding) {
+              n.y = padding;
+              n.vy = 0;
+            } else if (n.y > CANVAS_H - padding) {
+              n.y = CANVAS_H - padding;
+              n.vy = 0;
+            }
           }
         }
         setTick((t) => t + 1);
@@ -185,7 +235,7 @@ export const ConstellationCanvas = forwardRef<
       sim.stop();
       simRef.current = null;
     };
-  }, [graph, clusterByLabel]);
+  }, [graph, clusterByLabel, prefersReducedMotion]);
 
   // Build the drag behavior once per graph. Stored in a ref so the
   // re-attachment effect below can use it without re-creating the closures.
@@ -213,11 +263,12 @@ export const ConstellationCanvas = forwardRef<
       .on("end", (event) => {
         const subject = event.subject as GraphNode | null;
         if (!subject) return;
-        if (!event.active) simRef.current?.alphaTarget(0);
+        if (!event.active)
+          simRef.current?.alphaTarget(prefersReducedMotion ? 0 : 0.012);
         subject.fx = null;
         subject.fy = null;
       });
-  }, [graph]);
+  }, [graph, prefersReducedMotion]);
 
   // Attach the drag behavior to whatever circle.node elements are currently
   // in the DOM. Runs after every render — d3's .call(drag) is idempotent so
@@ -407,7 +458,15 @@ export const ConstellationCanvas = forwardRef<
 
       <g className="zoom-layer" transform={transform.toString()}>
 
-      <g className="starfield">
+      <g
+        className="starfield"
+        opacity={starfieldLit ? 1 : 0}
+        style={{
+          transition: prefersReducedMotion
+            ? "none"
+            : "opacity 1400ms ease-out",
+        }}
+      >
         {stars.map((s, i) => (
           <circle
             key={i}
@@ -445,7 +504,9 @@ export const ConstellationCanvas = forwardRef<
                 opacity={dim ? 0.18 : 1}
                 style={{
                   pointerEvents: "none",
-                  transition: "opacity 220ms ease, r 220ms ease",
+                  transition: prefersReducedMotion
+                    ? "none"
+                    : "opacity 220ms ease, r 220ms ease",
                 }}
               />
               <circle
@@ -500,7 +561,11 @@ export const ConstellationCanvas = forwardRef<
               stroke={stroke}
               strokeOpacity={opacity}
               strokeWidth={width}
-              style={{ transition: "stroke-opacity 200ms ease" }}
+              style={{
+                transition: prefersReducedMotion
+                  ? "none"
+                  : "stroke-opacity 200ms ease",
+              }}
             />
           );
         })}
@@ -539,7 +604,9 @@ export const ConstellationCanvas = forwardRef<
                 stroke: "#05060a",
                 strokeWidth: 3,
                 strokeLinejoin: "round",
-                transition: "opacity 220ms ease, font-size 220ms ease",
+                transition: prefersReducedMotion
+                  ? "none"
+                  : "opacity 220ms ease, font-size 220ms ease",
               }}
             >
               {c.label}
@@ -564,6 +631,7 @@ export const ConstellationCanvas = forwardRef<
             !inHoveredCluster(n.id)
           )
             opacity *= 0.3;
+          if (!loadedNodeIds.has(n.id)) opacity = 0;
           return (
             <circle
               key={n.id}
@@ -573,7 +641,11 @@ export const ConstellationCanvas = forwardRef<
               fill={nodeColor.get(n.id) ?? "#cbd5e1"}
               opacity={opacity}
               filter="url(#node-halo)"
-              style={{ transition: "opacity 200ms ease, r 200ms ease" }}
+              style={{
+                transition: prefersReducedMotion
+                  ? "none"
+                  : "opacity 600ms ease, r 200ms ease",
+              }}
             />
           );
         })}
@@ -599,6 +671,7 @@ export const ConstellationCanvas = forwardRef<
             !inHoveredCluster(n.id)
           )
             opacity *= 0.3;
+          if (!loadedNodeIds.has(n.id)) opacity = 0;
           const color = nodeColor.get(n.id) ?? "#cbd5e1";
           return (
             <circle
@@ -614,7 +687,9 @@ export const ConstellationCanvas = forwardRef<
               opacity={opacity}
               filter={isFocus ? "url(#node-glow-strong)" : undefined}
               style={{
-                transition: "opacity 200ms ease, r 180ms ease",
+                transition: prefersReducedMotion
+                  ? "none"
+                  : "opacity 600ms ease, r 180ms ease",
                 pointerEvents: filteredOut ? "none" : undefined,
               }}
               onMouseEnter={() => setHoveredNodeId(n.id)}
