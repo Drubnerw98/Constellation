@@ -4,6 +4,8 @@ import type { Graph, GraphNode, GraphEdge, ThemeCluster } from "../../types/grap
 
 interface Props {
   graph: Graph;
+  selectedNodeId: string | null;
+  onSelect: (id: string | null) => void;
 }
 
 const CANVAS_W = 1200;
@@ -56,12 +58,15 @@ function primaryClusterFor(
   return primary;
 }
 
-export function ConstellationCanvas({ graph }: Props) {
+export function ConstellationCanvas({
+  graph,
+  selectedNodeId,
+  onSelect,
+}: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
   const [, setTick] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [pinnedNodeId, setPinnedNodeId] = useState<string | null>(null);
 
   const stars = useMemo(() => seededStars(110, 14), []);
 
@@ -189,13 +194,18 @@ export function ConstellationCanvas({ graph }: Props) {
   }, [graph]);
 
   const { nodes, edges, clusters } = graph;
-  const focusId = pinnedNodeId ?? hoveredNodeId;
-  const focusNode = focusId
-    ? (nodes.find((n) => n.id === focusId) ?? null)
-    : null;
+  // Hover wins over selection for visual highlights — lets the user preview
+  // other nodes' connections while the detail panel still shows the pinned one.
+  const focusId = hoveredNodeId ?? selectedNodeId;
   const focusNeighbors = focusId
     ? (neighbors.get(focusId) ?? new Set<string>())
     : new Set<string>();
+  const hoveredNode = hoveredNodeId
+    ? (nodes.find((n) => n.id === hoveredNodeId) ?? null)
+    : null;
+  const selectedNode = selectedNodeId
+    ? (nodes.find((n) => n.id === selectedNodeId) ?? null)
+    : null;
 
   const isDimmed = (id: string): boolean =>
     focusId !== null && id !== focusId && !focusNeighbors.has(id);
@@ -206,11 +216,11 @@ export function ConstellationCanvas({ graph }: Props) {
 
   const handleNodeClick = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setPinnedNodeId((cur) => (cur === id ? null : id));
+    onSelect(selectedNodeId === id ? null : id);
   };
 
   const handleBackgroundClick = () => {
-    setPinnedNodeId(null);
+    onSelect(null);
   };
 
   return (
@@ -384,92 +394,56 @@ export function ConstellationCanvas({ graph }: Props) {
         })}
       </g>
 
-      {pinnedNodeId !== null && focusNode && (
+      {selectedNode && (
         <circle
-          cx={focusNode.x ?? 0}
-          cy={focusNode.y ?? 0}
+          cx={selectedNode.x ?? 0}
+          cy={selectedNode.y ?? 0}
           r={NODE_RADIUS * 2.4}
           fill="none"
-          stroke={nodeColor.get(focusNode.id) ?? "#fefce8"}
+          stroke={nodeColor.get(selectedNode.id) ?? "#fefce8"}
           strokeWidth={1}
-          strokeOpacity={0.55}
+          strokeOpacity={0.6}
           strokeDasharray="3 3"
           style={{ pointerEvents: "none" }}
         />
       )}
 
-      {focusNode && (() => {
-        const TOOLTIP_W = 260;
-        const TOOLTIP_H = 240;
+      {hoveredNode && (() => {
+        const TOOLTIP_W = 220;
+        const TOOLTIP_H = 60;
         const OFFSET = 14;
-        const nx = focusNode.x ?? 0;
-        const ny = focusNode.y ?? 0;
+        const nx = hoveredNode.x ?? 0;
+        const ny = hoveredNode.y ?? 0;
         const placeRight = nx < CANVAS_W / 2;
         const placeBelow = ny < CANVAS_H / 2;
         const tx = placeRight ? nx + OFFSET : nx - OFFSET - TOOLTIP_W;
         const ty = placeBelow ? ny + OFFSET : ny - OFFSET - TOOLTIP_H;
         return (
-        <foreignObject
-          x={tx}
-          y={ty}
-          width={TOOLTIP_W}
-          height={TOOLTIP_H}
-          style={{ overflow: "visible", pointerEvents: "none" }}
-        >
-          <div
-            className="rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-2 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur"
-            style={{ width: "fit-content", maxWidth: 260 }}
+          <foreignObject
+            x={tx}
+            y={ty}
+            width={TOOLTIP_W}
+            height={TOOLTIP_H}
+            style={{ overflow: "visible", pointerEvents: "none" }}
           >
-            <div className="flex items-baseline justify-between gap-2">
+            <div
+              className="rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-1.5 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur"
+              style={{ width: "fit-content", maxWidth: 220 }}
+            >
               <div className="text-sm font-medium text-white">
-                {focusNode.title}
+                {hoveredNode.title}
               </div>
-              {pinnedNodeId !== null && (
-                <div className="text-[9px] uppercase tracking-wider text-zinc-500">
-                  pinned
-                </div>
-              )}
+              <div className="mt-0.5 text-[11px] text-zinc-400">
+                {hoveredNode.mediaType}
+                {hoveredNode.year ? ` · ${hoveredNode.year}` : ""}
+                {hoveredNode.rating !== null
+                  ? ` · ${hoveredNode.rating}★`
+                  : hoveredNode.matchScore !== null
+                    ? ` · ${Math.round(hoveredNode.matchScore * 100)}% match`
+                    : ""}
+              </div>
             </div>
-            <div className="mt-0.5 text-[11px] text-zinc-400">
-              {focusNode.mediaType}
-              {focusNode.year ? ` · ${focusNode.year}` : ""}
-              {focusNode.rating !== null
-                ? ` · ${focusNode.rating}★`
-                : focusNode.matchScore !== null
-                  ? ` · ${Math.round(focusNode.matchScore * 100)}% match`
-                  : ""}
-            </div>
-            {focusNode.themes.length > 0 && (
-              <div className="mt-2 text-[11px] text-zinc-300">
-                <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
-                  Themes
-                </div>
-                <ul className="space-y-0.5">
-                  {focusNode.themes.map((t) => (
-                    <li key={t}>· {t}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {focusNode.archetypes.length > 0 && (
-              <div className="mt-2 text-[11px] text-zinc-300">
-                <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
-                  Archetypes
-                </div>
-                <ul className="space-y-0.5">
-                  {focusNode.archetypes.map((a) => (
-                    <li key={a}>· {a}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {pinnedNodeId === null && (
-              <div className="mt-2 text-[10px] italic text-zinc-500">
-                click to pin
-              </div>
-            )}
-          </div>
-        </foreignObject>
+          </foreignObject>
         );
       })()}
     </svg>
