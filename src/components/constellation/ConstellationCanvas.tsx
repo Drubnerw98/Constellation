@@ -6,6 +6,7 @@ interface Props {
   graph: Graph;
   selectedNodeId: string | null;
   onSelect: (id: string | null) => void;
+  activeFormats: Set<GraphNode["mediaType"]>;
 }
 
 const CANVAS_W = 1200;
@@ -62,6 +63,7 @@ export function ConstellationCanvas({
   graph,
   selectedNodeId,
   onSelect,
+  activeFormats,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const simRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
@@ -324,6 +326,10 @@ export function ConstellationCanvas({
     const node = nodes.find((n) => n.id === id);
     return node?.themes.includes(focusedClusterLabel) ?? false;
   };
+  const matchesFormat = (id: string): boolean => {
+    const node = nodes.find((n) => n.id === id);
+    return node ? activeFormats.has(node.mediaType) : true;
+  };
 
   return (
     <svg
@@ -410,6 +416,7 @@ export function ConstellationCanvas({
             !(inFocusedCluster(s.id) && inFocusedCluster(t.id));
           let opacity = active ? 0.85 : dimmed ? 0.04 : 0.1;
           if (galaxyDim) opacity *= 0.2;
+          if (!matchesFormat(s.id) || !matchesFormat(t.id)) opacity *= 0.05;
           const stroke = active ? "#fef3c7" : "#9aa4b2";
           const width = (0.5 + e.strength * 1.4) * (active ? 1.6 : 1);
           return (
@@ -469,6 +476,7 @@ export function ConstellationCanvas({
           const r = isFocus ? baseR * 4.2 : isNeighbor ? baseR * 3.2 : baseR * 2.6;
           let opacity = dimmed ? 0.1 : isFocus ? 0.85 : 0.55;
           if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
+          if (!activeFormats.has(n.mediaType)) opacity *= 0.1;
           return (
             <circle
               key={n.id}
@@ -495,6 +503,8 @@ export function ConstellationCanvas({
               : NODE_RADIUS;
           let opacity = dimmed ? 0.4 : 1;
           if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
+          const filteredOut = !activeFormats.has(n.mediaType);
+          if (filteredOut) opacity *= 0.1;
           const color = nodeColor.get(n.id) ?? "#cbd5e1";
           return (
             <circle
@@ -509,6 +519,7 @@ export function ConstellationCanvas({
               strokeWidth={isFocus ? 2 : 1.4}
               opacity={opacity}
               filter={isFocus ? "url(#node-glow-strong)" : undefined}
+              style={filteredOut ? { pointerEvents: "none" } : undefined}
               onMouseEnter={() => setHoveredNodeId(n.id)}
               onMouseLeave={() =>
                 setHoveredNodeId((cur) => (cur === n.id ? null : cur))
