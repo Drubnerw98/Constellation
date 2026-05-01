@@ -69,6 +69,11 @@ export function ConstellationCanvas({
     SVGSVGElement,
     unknown
   > | null>(null);
+  const dragBehaviorRef = useRef<d3.DragBehavior<
+    SVGCircleElement,
+    unknown,
+    GraphNode | null
+  > | null>(null);
   const [, setTick] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [transform, setTransform] = useState<d3.ZoomTransform>(
@@ -162,13 +167,11 @@ export function ConstellationCanvas({
     };
   }, [graph, clusterByLabel]);
 
+  // Build the drag behavior once per graph. Stored in a ref so the
+  // re-attachment effect below can use it without re-creating the closures.
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
     const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
-
-    const drag = d3
+    dragBehaviorRef.current = d3
       .drag<SVGCircleElement, unknown, GraphNode | null>()
       .subject(function () {
         const id = (this as SVGCircleElement).getAttribute("data-id");
@@ -194,11 +197,19 @@ export function ConstellationCanvas({
         subject.fx = null;
         subject.fy = null;
       });
+  }, [graph]);
 
+  // Attach the drag behavior to whatever circle.node elements are currently
+  // in the DOM. Runs after every render — d3's .call(drag) is idempotent so
+  // re-attaching is cheap, and this guards against React reconciliation
+  // remounting circle nodes (which silently drops the previous binding).
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !dragBehaviorRef.current) return;
     d3.select(svg)
       .selectAll<SVGCircleElement, unknown>("circle.node")
-      .call(drag);
-  }, [graph]);
+      .call(dragBehaviorRef.current);
+  });
 
   useEffect(() => {
     const svg = svgRef.current;
