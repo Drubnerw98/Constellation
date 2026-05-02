@@ -22,13 +22,12 @@ export class ApiError extends Error {
 
 const apiBase = import.meta.env.VITE_RESONANCE_API_URL ?? "";
 
-// Resonance's recommendation enum includes "pending" and "seen" — those are
-// pre-engagement states that don't carry useful visualization signal, so we
-// drop them on the way in. Constellation's RecommendationItem only models
-// the user-actioned subset.
+// Resonance's recommendation enum includes "pending" and "seen" (pre-
+// engagement, no signal) and "skipped" (active rejection — also no positive
+// signal for a constellation that maps what you're drawn to). Drop all
+// three; only the user-affirmed subset is renderable.
 const RENDERABLE_STATUSES = new Set([
   "saved",
-  "skipped",
   "rated",
   "plan_to",
 ]);

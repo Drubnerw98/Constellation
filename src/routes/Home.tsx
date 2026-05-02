@@ -31,13 +31,27 @@ export function Home() {
 
   const data = useMemo<ResolvedData>(() => {
     switch (profileStatus.state) {
-      case "ready":
+      case "ready": {
+        // Cap volume — the simulation + visual density are tuned for tens
+        // of nodes, not the hundreds a long-time Resonance user has. Pick
+        // the highest-signal subset: library by rating desc (loved most),
+        // recommendations by matchScore desc (best fit). The visualization
+        // intent is "what you're drawn to", not "everything you logged".
+        const LIBRARY_CAP = 40;
+        const RECS_CAP = 25;
+        const library = [...profileStatus.data.library]
+          .sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1))
+          .slice(0, LIBRARY_CAP);
+        const recommendations = [...profileStatus.data.recommendations]
+          .sort((a, b) => b.matchScore - a.matchScore)
+          .slice(0, RECS_CAP);
         return {
           profile: profileStatus.data.profile,
-          library: profileStatus.data.library,
-          recommendations: profileStatus.data.recommendations,
+          library,
+          recommendations,
           bannerMessage: null,
         };
+      }
       case "no-profile":
         return {
           profile: sampleProfile,
