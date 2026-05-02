@@ -90,7 +90,6 @@ export function ConstellationView({
       <DetailPanel
         node={selectedNode}
         graph={graph}
-        profile={profile}
         onClose={() => setSelectedNodeId(null)}
         onSelectConnected={setSelectedNodeId}
       />

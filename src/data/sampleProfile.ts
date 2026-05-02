@@ -315,6 +315,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "saved",
     rating: null,
+    explanation:
+      "A class-revenge arc that earns every advance through real cost. Darrow's choices compound across seven books, each step pushed back to the constraint you respond to: the price has to be paid in full.",
   },
   {
     id: "rec-pluto",
@@ -328,6 +330,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "plan_to",
     rating: null,
+    explanation:
+      "Urasawa treats every mechanical death as a moral debit. Pacifist robots inherit the violence they refused, and the manga refuses to let any of them off the hook for surviving.",
   },
   {
     id: "rec-monster",
@@ -341,6 +345,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "saved",
     rating: null,
+    explanation:
+      "Dr. Tenma saves one child whose adult choices destroy thousands. A 74-episode meditation on whether good intent earns absolution when the consequence cascade is total.",
   },
   {
     id: "rec-mindhunter",
@@ -354,6 +360,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "rated",
     rating: 4,
+    explanation:
+      "Two profilers build a methodology by sitting across the table from killers. The work warps them as fast as it informs them — exactly the slow institutional grind you reach for.",
   },
   {
     id: "rec-killing",
@@ -367,6 +375,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "saved",
     rating: null,
+    explanation:
+      "A farmer refuses Hitler's oath knowing it costs him everything. Malick stages quiet conviction as the only resistance that matters when the institution is total.",
   },
   {
     id: "rec-kentucky",
@@ -380,6 +390,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "plan_to",
     rating: null,
+    explanation:
+      "Magical realism through hollowed-out Appalachia, where the underground highway is built out of debt and disappearance. The geography itself is the story of the system failing.",
   },
   {
     id: "rec-stalker",
@@ -393,6 +405,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "saved",
     rating: null,
+    explanation:
+      "Tarkovsky's pilgrimage into the Zone. Guides sell clients on a wish-granting room they themselves are too ruined by faith to enter. Religious feeling and despair, indistinguishable.",
   },
   {
     id: "rec-roadside",
@@ -406,6 +420,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "plan_to",
     rating: null,
+    explanation:
+      "The novella that became Stalker. Aliens passed through and left debris that warps reality; a black market and a state both fail to contain it. Ambiguity all the way down.",
   },
   {
     id: "rec-wire",
@@ -419,6 +435,8 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "saved",
     rating: null,
+    explanation:
+      "Five seasons, five institutions — police, dock, school, paper, hall — each one failing every individual who tries to act in good faith inside it. The pattern at its most rigorous.",
   },
   {
     id: "rec-killers",
@@ -432,5 +450,7 @@ export const sampleRecommendations: RecommendationItem[] = [
     ],
     status: "saved",
     rating: null,
+    explanation:
+      "Scorsese uses a marriage as the lens for a systematic genocide. The camera refuses to look away from the slow corruption of love into complicity.",
   },
 ];

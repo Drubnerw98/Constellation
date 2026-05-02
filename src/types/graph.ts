@@ -20,6 +20,9 @@ export interface GraphNode extends SimulationNodeDatum {
    * of the highest-weight theme absorbing every multi-tag node. Distinct
    * from `themes` (full membership, used for hover highlight + edges). */
   primaryTheme: string | null;
+  /** Per-item rationale (recs only). The AI's reason this title fits the
+   * user's taste, scoped to this title — not the profile-wide evidence. */
+  explanation: string | null;
 }
 
 export interface GraphEdge extends SimulationLinkDatum<GraphNode> {

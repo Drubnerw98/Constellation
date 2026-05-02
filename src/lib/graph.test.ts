@@ -72,6 +72,7 @@ describe("buildGraph", () => {
         tasteTags: ["alpha", "broken cop", "ghost-tag-not-in-profile"],
         status: "saved",
         rating: null,
+        explanation: null,
       },
     ];
     const { nodes } = buildGraph(baseProfile, [], recs);
@@ -101,6 +102,7 @@ describe("buildGraph", () => {
         tasteTags: ["beta"],
         status: "saved",
         rating: null,
+        explanation: null,
       },
     ];
     const { nodes } = buildGraph(baseProfile, lib, recs);

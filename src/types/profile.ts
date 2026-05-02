@@ -66,4 +66,9 @@ export interface RecommendationItem {
   tasteTags: string[];
   status: RecommendationStatus;
   rating: number | null;
+  /** Per-item AI verdict from Resonance — 1-2 sentences specific to this
+   * title, distinct from profile-wide theme.evidence. Always present from
+   * the API but typed nullable so older snapshots / sample data don't have
+   * to populate it. */
+  explanation: string | null;
 }

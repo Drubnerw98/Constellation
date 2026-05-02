@@ -188,6 +188,7 @@ export function buildGraph(
       archetypes,
       source: "library",
       primaryTheme: null,
+      explanation: null,
     });
   }
 
@@ -208,6 +209,7 @@ export function buildGraph(
       archetypes,
       source: "recommendation",
       primaryTheme: null,
+      explanation: rec.explanation,
     });
   }
 

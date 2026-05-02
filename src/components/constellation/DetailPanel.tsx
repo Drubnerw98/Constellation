@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Graph, GraphNode } from "../../types/graph";
-import type { TasteProfile } from "../../types/profile";
 
 interface Props {
   node: GraphNode | null;
   graph: Graph;
-  profile: TasteProfile;
   onClose: () => void;
   onSelectConnected: (id: string) => void;
 }
@@ -47,7 +45,6 @@ const STATUS_LABEL: Record<GraphNode["status"], string> = {
 export function DetailPanel({
   node,
   graph,
-  profile,
   onClose,
   onSelectConnected,
 }: Props) {
@@ -59,18 +56,9 @@ export function DetailPanel({
   const isOpen = node !== null;
   const shown = displayNode;
 
-  const themesWithEvidence = shown
-    ? shown.themes
-        .map((label) => profile.themes.find((t) => t.label === label))
-        .filter((t): t is TasteProfile["themes"][number] => t !== undefined)
-    : [];
-  const archetypesWithAttraction = shown
-    ? shown.archetypes
-        .map((label) => profile.archetypes.find((a) => a.label === label))
-        .filter(
-          (a): a is TasteProfile["archetypes"][number] => a !== undefined,
-        )
-    : [];
+  const clusterColor = (label: string): string =>
+    graph.clusters.find((c) => c.label === label)?.color ?? "#9ca3af";
+
   const connected = shown ? connectedTitlesFor(graph, shown.id) : [];
 
   return (
@@ -124,36 +112,52 @@ export function DetailPanel({
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4 text-sm text-zinc-300">
-            {themesWithEvidence.length > 0 && (
+            {shown.explanation && (
+              <section className="mb-5">
+                <h3 className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                  Why this fits
+                </h3>
+                <p className="text-xs leading-relaxed text-zinc-300">
+                  {shown.explanation}
+                </p>
+              </section>
+            )}
+
+            {shown.themes.length > 0 && (
               <section className="mb-5">
                 <h3 className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
                   Themes
                 </h3>
-                <ul className="space-y-3">
-                  {themesWithEvidence.map((t) => (
-                    <li key={t.label}>
-                      <div className="font-medium text-zinc-200">{t.label}</div>
-                      <div className="mt-0.5 text-xs leading-relaxed text-zinc-500">
-                        {t.evidence}
-                      </div>
+                <ul className="space-y-1.5">
+                  {shown.themes.map((label) => (
+                    <li
+                      key={label}
+                      className="flex items-baseline gap-2 text-xs leading-relaxed text-zinc-300"
+                    >
+                      <span
+                        aria-hidden
+                        className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ background: clusterColor(label) }}
+                      />
+                      <span>{label}</span>
                     </li>
                   ))}
                 </ul>
               </section>
             )}
 
-            {archetypesWithAttraction.length > 0 && (
+            {shown.archetypes.length > 0 && (
               <section className="mb-5">
                 <h3 className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
                   Archetypes
                 </h3>
-                <ul className="space-y-3">
-                  {archetypesWithAttraction.map((a) => (
-                    <li key={a.label}>
-                      <div className="font-medium text-zinc-200">{a.label}</div>
-                      <div className="mt-0.5 text-xs leading-relaxed text-zinc-500">
-                        {a.attraction}
-                      </div>
+                <ul className="space-y-1.5">
+                  {shown.archetypes.map((label) => (
+                    <li
+                      key={label}
+                      className="text-xs leading-relaxed text-zinc-300"
+                    >
+                      {label}
                     </li>
                   ))}
                 </ul>

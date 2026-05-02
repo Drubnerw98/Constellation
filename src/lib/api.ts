@@ -44,6 +44,9 @@ interface RawRecommendation {
   tasteTags: string[];
   status: string;
   rating: number | null;
+  // Server-side rolled out separately; treat as optional during the brief
+  // window where the deployed Resonance version may not yet include it.
+  explanation?: string | null;
 }
 
 export async function fetchProfileExport(
@@ -80,6 +83,10 @@ export async function fetchProfileExport(
     library: raw.library,
     recommendations: raw.recommendations
       .filter((r) => RENDERABLE_STATUSES.has(r.status))
-      .map((r) => ({ ...r, status: r.status as RecommendationItem["status"] })),
+      .map((r) => ({
+        ...r,
+        status: r.status as RecommendationItem["status"],
+        explanation: r.explanation ?? null,
+      })),
   };
 }
