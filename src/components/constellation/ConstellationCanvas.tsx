@@ -29,7 +29,27 @@ interface Star {
   y: number;
   r: number;
   o: number;
+  fill: string;
 }
+
+// Mostly white with a sprinkle of warm/cool tints. Real night-sky stars
+// vary in temperature; uniform white reads as a UI dot pattern instead of
+// stars. Tints are subtle — only a handful of stars per frame should look
+// noticeably non-white.
+const STAR_FILLS = [
+  "#e9ecf2",
+  "#e9ecf2",
+  "#e9ecf2",
+  "#e9ecf2",
+  "#e9ecf2",
+  "#e9ecf2",
+  "#e9ecf2",
+  "#e9ecf2",
+  "#fde6c8", // warm
+  "#fcd7b2", // warm
+  "#d4def8", // cool
+  "#cbd6f5", // cool
+];
 
 function seededStars(count: number, anchorCount: number): Star[] {
   const out: Star[] = [];
@@ -38,12 +58,15 @@ function seededStars(count: number, anchorCount: number): Star[] {
     seed = (seed * 1664525 + 1013904223) % 0x100000000;
     return seed / 0x100000000;
   };
+  const pickFill = () =>
+    STAR_FILLS[Math.floor(rand() * STAR_FILLS.length)] ?? "#e9ecf2";
   for (let i = 0; i < count; i++) {
     out.push({
       x: rand() * CANVAS_W,
       y: rand() * CANVAS_H,
       r: 0.4 + rand() * 1.0,
       o: 0.18 + rand() * 0.45,
+      fill: pickFill(),
     });
   }
   for (let i = 0; i < anchorCount; i++) {
@@ -52,6 +75,7 @@ function seededStars(count: number, anchorCount: number): Star[] {
       y: rand() * CANVAS_H,
       r: 1.6 + rand() * 1.0,
       o: 0.6 + rand() * 0.3,
+      fill: pickFill(),
     });
   }
   return out;
@@ -593,7 +617,7 @@ export const ConstellationCanvas = forwardRef<
             cx={s.x}
             cy={s.y}
             r={s.r}
-            fill="#e9ecf2"
+            fill={s.fill}
             opacity={s.o}
           />
         ))}
