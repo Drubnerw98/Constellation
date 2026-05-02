@@ -325,13 +325,13 @@ CI is not configured yet — `pnpm check` is the manual gate. Add GitHub Actions
 
 ## 11. Deployment
 
-- **Frontend host:** Vercel (planned — not yet deployed at time of writing).
+- **Frontend host:** Vercel.
 - **Backend dependency:** Resonance API at `https://resonance-server-t4r8.onrender.com`. Constellation reads `VITE_RESONANCE_API_URL` from env.
-- **Required env vars:**
+- **Required env vars (set in Vercel project settings):**
   - `VITE_CLERK_PUBLISHABLE_KEY` — same value Resonance uses
   - `VITE_RESONANCE_API_URL` — Resonance API base URL
-- **CORS dependency:** the Constellation prod URL must be appended to the Resonance backend's `FRONTEND_ORIGIN` env on Render before prod-to-prod calls work.
-- **SPA fallback:** Vercel needs `vercel.json` with a rewrite so `/demo` and any future routes resolve to `index.html` on direct hit. Not yet added.
+- **CORS dependency:** the Constellation prod URL must be appended to the Resonance backend's `FRONTEND_ORIGIN` env on Render (comma-separated) before prod-to-prod calls work.
+- **SPA fallback:** `vercel.json` rewrites any path without a dot to `/` so `/demo` and future routes resolve to `index.html` on direct hit. Static assets (anything with a dot — `.svg`, `.js`, `.css`) are unaffected.
 
 ---
 
