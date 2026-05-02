@@ -885,16 +885,18 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                         : "opacity 220ms ease, r 220ms ease",
                     }}
                   />
-                  {/* Tight inner tap zone — small enough that node hit
-                      areas (radius ~30) sit on top in the painted area
-                      where nodes live, but catches taps in the empty
-                      negative space between nodes at cluster center.
-                      Combined with the clickable label, gives users two
-                      paths to galaxy mode without re-stealing node taps. */}
+                  {/* Inner tap zone for cluster focus. 22 on mobile felt
+                      cramped on PC; 55 gives a healthy click target while
+                      staying smaller than typical adjacent-cluster spacing
+                      so zones don't overlap. Painted before nodes — node
+                      hit areas (radius ~30) sit on top in the dense
+                      member area, so star clicks still win there. The
+                      empty negative space at cluster center catches taps
+                      that would otherwise miss between nodes. */}
                   <circle
                     cx={c.centerX}
                     cy={c.centerY}
-                    r={22}
+                    r={55}
                     fill="transparent"
                     className="cursor-pointer"
                     onClick={(e) => {
