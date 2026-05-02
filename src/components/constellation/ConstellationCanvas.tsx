@@ -885,10 +885,29 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                         : "opacity 220ms ease, r 220ms ease",
                     }}
                   />
-                  {/* Cluster glow is purely visual — click/hover live on
-                      the label below, freeing the glow area to pass taps
-                      through to underlying nodes. Was a 110px hit circle
-                      that stole node taps on mobile. */}
+                  {/* Tight inner tap zone — small enough that node hit
+                      areas (radius ~30) sit on top in the painted area
+                      where nodes live, but catches taps in the empty
+                      negative space between nodes at cluster center.
+                      Combined with the clickable label, gives users two
+                      paths to galaxy mode without re-stealing node taps. */}
+                  <circle
+                    cx={c.centerX}
+                    cy={c.centerY}
+                    r={22}
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      flyToCluster(c.label);
+                    }}
+                    onMouseEnter={() => setHoveredClusterLabel(c.label)}
+                    onMouseLeave={() =>
+                      setHoveredClusterLabel((cur) =>
+                        cur === c.label ? null : cur,
+                      )
+                    }
+                  />
                 </g>
               );
             })}
@@ -1228,21 +1247,24 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
 
       </svg>
 
-      {/* Reset View button rendered as HTML overlay (not foreignObject)
-          so it doesn't scale with the viewBox. On a mobile viewport the
-          previous foreignObject button rendered at ~12px tall — invisible.
-          As HTML it stays a proper touch target at all sizes. */}
+      {/* Reset View button + double-tap hint rendered as HTML overlay
+          (not foreignObject) so they don't scale with the viewBox. */}
       {(isZoomed || inGalaxyMode) && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            resetView();
-          }}
-          className="pointer-events-auto absolute bottom-4 left-4 cursor-pointer rounded-md border border-white/10 bg-[var(--color-surface)] px-3.5 py-2.5 font-mono text-[11px] tracking-[0.18em] text-zinc-300 uppercase backdrop-blur-md transition-colors hover:border-white/20 hover:text-zinc-100"
-        >
-          {inGalaxyMode ? "← Back" : "↺ Reset view"}
-        </button>
+        <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex flex-col items-start gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              resetView();
+            }}
+            className="pointer-events-auto cursor-pointer rounded-md border border-white/10 bg-[var(--color-surface)] px-3.5 py-2.5 font-mono text-[11px] tracking-[0.18em] text-zinc-300 uppercase backdrop-blur-md transition-colors hover:border-white/20 hover:text-zinc-100"
+          >
+            {inGalaxyMode ? "← Back" : "↺ Reset view"}
+          </button>
+          <p className="pl-1 font-mono text-[9px] tracking-[0.2em] text-zinc-600 uppercase">
+            or double-tap canvas
+          </p>
+        </div>
       )}
       </div>
     );
