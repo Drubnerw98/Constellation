@@ -23,6 +23,10 @@ interface Props {
    * cluster label, zooms in past the threshold, or exits galaxy mode.
    * View consumes this to render the cluster info panel. */
   onFocusedClusterChange?: (label: string | null) => void;
+  /** When false, only edges connected to the selected node are rendered.
+   * Lets users declutter the canvas to focus on one title at a time.
+   * When true (default), all edges render with the existing opacity rules. */
+  showAllConnections?: boolean;
 }
 
 export interface ConstellationCanvasHandle {
@@ -290,7 +294,14 @@ function nodeGlyph(
 
 export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
   function ConstellationCanvas(
-    { graph, selectedNodeId, onSelect, activeFormats, onFocusedClusterChange },
+    {
+      graph,
+      selectedNodeId,
+      onSelect,
+      activeFormats,
+      onFocusedClusterChange,
+      showAllConnections = true,
+    },
     ref,
   ) {
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -906,6 +917,19 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               const s = e.source as GraphNode;
               const t = e.target as GraphNode;
               if (typeof s !== "object" || typeof t !== "object") return null;
+              // Connection visibility toggle: when "off", only render edges
+              // connected to the currently selected/hovered node. With no
+              // selection, show nothing — clean canvas. Existing opacity
+              // rules below still apply on top of this gate.
+              if (!showAllConnections) {
+                const focusId = selectedNodeId ?? hoveredNodeId;
+                if (
+                  focusId === null ||
+                  (s.id !== focusId && t.id !== focusId)
+                ) {
+                  return null;
+                }
+              }
               const active = isEdgeActive(s.id, t.id);
               const dimmed = isEdgeDimmed(s.id, t.id);
               const galaxyDim =
@@ -979,7 +1003,10 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               const dist = Math.sqrt(dx * dx + dy * dy) || 1;
               const ux = dx / dist;
               const uy = dy / dist;
-              const labelDist = dist + c.radius + 14;
+              // Label distance: project past the cluster's outer edge plus
+              // a generous margin so labels don't overlap adjacent cluster
+              // glows in the force-directed layout. Was 14; bumped to 36.
+              const labelDist = dist + c.radius + 36;
               const margin = 16;
               let labelX = CANVAS_W / 2 + ux * labelDist;
               let labelY = CANVAS_H / 2 + uy * labelDist;

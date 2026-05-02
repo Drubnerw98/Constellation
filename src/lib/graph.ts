@@ -521,10 +521,11 @@ function placeClusters(
     label: t.label,
     weight: t.weight,
     radius: radiusFor(t),
-    // Seeded offset from canvas center, biased to the inner ~60% of the
-    // canvas so initial positions don't start clipped against bounds.
-    x: CANVAS_W / 2 + (rand() - 0.5) * CANVAS_W * 0.55,
-    y: CANVAS_H / 2 + (rand() - 0.5) * CANVAS_H * 0.55,
+    // Wider seed (0.85 vs prior 0.55) so initial positions span almost
+    // the whole canvas. Combined with weaker center pull, clusters
+    // settle into a more spread-out organic layout instead of bunching.
+    x: CANVAS_W / 2 + (rand() - 0.5) * CANVAS_W * 0.85,
+    y: CANVAS_H / 2 + (rand() - 0.5) * CANVAS_H * 0.85,
   }));
 
   const sim = d3
@@ -533,25 +534,30 @@ function placeClusters(
       "charge",
       d3
         .forceManyBody<ClusterPlacement>()
-        .strength((d) => -1400 - d.weight * 1500),
+        .strength((d) => -1800 - d.weight * 1800),
     )
     .force(
       "collide",
       d3
         .forceCollide<ClusterPlacement>()
-        .radius((d) => d.radius + 28)
+        // Larger margin (60 vs 28) — clusters end up with visible
+        // negative space between them instead of glow-touching.
+        .radius((d) => d.radius + 60)
         .strength(0.95),
     )
     .force(
       "center",
-      d3.forceCenter(CANVAS_W / 2, CANVAS_H / 2).strength(0.04),
+      // Weaker center pull (0.02 vs 0.04) lets clusters drift toward the
+      // edges of the canvas instead of getting squished into the middle.
+      d3.forceCenter(CANVAS_W / 2, CANVAS_H / 2).strength(0.02),
     )
     .stop();
 
   // Manual ticks (sim.stop() prevents auto-tick) plus per-tick clamp
   // so clusters stay inside canvas bounds even if forces would launch
-  // them outside.
-  for (let i = 0; i < 320; i++) {
+  // them outside. More ticks (400 vs 320) so the layout fully settles
+  // with the stronger repulsion + weaker center.
+  for (let i = 0; i < 400; i++) {
     sim.tick();
     for (const c of placement) {
       const m = c.radius + 24;

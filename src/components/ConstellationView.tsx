@@ -45,6 +45,7 @@ export function ConstellationView({
 }: Props) {
   const [clusterScaleMode, setClusterScaleMode] =
     useState<ClusterScaleMode>("weight");
+  const [showAllConnections, setShowAllConnections] = useState(true);
 
   const graph = useMemo(
     () =>
@@ -101,6 +102,7 @@ export function ConstellationView({
         onSelect={setSelectedNodeId}
         activeFormats={activeFormats}
         onFocusedClusterChange={setFocusedClusterLabel}
+        showAllConnections={showAllConnections}
       />
       <SearchInput graph={graph} onPick={handleSearchPick} />
       <FilterBar
@@ -109,6 +111,8 @@ export function ConstellationView({
         onReset={resetFormats}
         clusterScaleMode={clusterScaleMode}
         onClusterScaleModeChange={setClusterScaleMode}
+        showAllConnections={showAllConnections}
+        onShowAllConnectionsChange={setShowAllConnections}
       />
       <ClusterPanel
         cluster={focusedCluster}

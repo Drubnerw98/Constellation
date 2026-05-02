@@ -16,6 +16,8 @@ interface Props {
   onReset: () => void;
   clusterScaleMode: ClusterScaleMode;
   onClusterScaleModeChange: (mode: ClusterScaleMode) => void;
+  showAllConnections: boolean;
+  onShowAllConnectionsChange: (value: boolean) => void;
 }
 
 export function FilterBar({
@@ -24,6 +26,8 @@ export function FilterBar({
   onReset,
   clusterScaleMode,
   onClusterScaleModeChange,
+  showAllConnections,
+  onShowAllConnectionsChange,
 }: Props) {
   const allActive = FORMATS.every((f) => activeFormats.has(f.id));
   return (
@@ -70,6 +74,18 @@ export function FilterBar({
         scale by{" "}
         <span className="text-zinc-300">
           {clusterScaleMode === "weight" ? "weight" : "titles"}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onShowAllConnectionsChange(!showAllConnections)}
+        className="pointer-events-auto rounded-full px-3 py-1 text-[11px] text-zinc-500 transition-colors hover:text-zinc-300"
+        aria-pressed={!showAllConnections}
+        title="Show all connections vs. only the connections of the selected title"
+      >
+        connections{" "}
+        <span className="text-zinc-300">
+          {showAllConnections ? "all" : "selected"}
         </span>
       </button>
     </div>
