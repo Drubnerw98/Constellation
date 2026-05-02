@@ -222,9 +222,13 @@ export function buildGraph(
   // Greedy load-balanced primary-theme assignment. Without this, the
   // highest-weight theme absorbs every multi-tag node (a rec tagged with
   // both [theme A weight 0.99, theme B weight 0.82] always picks A) and
-  // weaker themes end up as empty cluster glows. Sorting by candidate
-  // count ascending lets single-theme nodes claim their seats first, then
-  // multi-theme nodes fill in wherever it balances the visualization.
+  // weaker themes end up as empty cluster glows.
+  //
+  // Sort nodes by candidate count ascending — single-theme nodes claim
+  // their seats first. On count-ties, prefer the LOWER-weight theme:
+  // high-weight themes have more candidate nodes, so they'll fill up
+  // through other nodes' choices anyway. Reserving early ties for
+  // low-weight themes ensures every theme picks up at least one resident.
   const themeWeight = new Map(profile.themes.map((t) => [t.label, t.weight]));
   const memberCount = new Map<string, number>();
   for (const t of profile.themes) memberCount.set(t.label, 0);
@@ -235,11 +239,11 @@ export function buildGraph(
     if (node.themes.length === 0) continue;
     let best: string | null = null;
     let bestCount = Infinity;
-    let bestWeight = -1;
+    let bestWeight = Infinity;
     for (const themeLabel of node.themes) {
       const count = memberCount.get(themeLabel) ?? 0;
       const weight = themeWeight.get(themeLabel) ?? 0;
-      if (count < bestCount || (count === bestCount && weight > bestWeight)) {
+      if (count < bestCount || (count === bestCount && weight < bestWeight)) {
         best = themeLabel;
         bestCount = count;
         bestWeight = weight;
