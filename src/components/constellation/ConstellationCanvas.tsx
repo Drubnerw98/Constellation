@@ -315,6 +315,11 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       unknown,
       GraphNode | null
     > | null>(null);
+    // Snapshot of the user's transform right before they entered galaxy
+    // mode. Restored on exit so resetting from a cluster returns to where
+    // they were exploring, not all the way back to identity. Cleared
+    // after restore so subsequent Reset View clicks go to identity.
+    const preFocusTransformRef = useRef<d3.ZoomTransform | null>(null);
     const [, setTick] = useState(0);
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
     const [hoveredClusterLabel, setHoveredClusterLabel] = useState<
@@ -610,11 +615,14 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       const svg = svgRef.current;
       const zoom = zoomBehaviorRef.current;
       if (!svg || !zoom) return;
+      // If we entered galaxy mode from a non-identity zoom, restore that
+      // pre-focus transform instead of jumping all the way to identity —
+      // less disorienting for users who were already exploring zoomed in.
+      // Falls back to identity when no snapshot exists.
+      const target = preFocusTransformRef.current ?? d3.zoomIdentity;
+      preFocusTransformRef.current = null;
       setFocusedClusterLabel(null);
-      d3.select(svg)
-        .transition()
-        .duration(700)
-        .call(zoom.transform, d3.zoomIdentity);
+      d3.select(svg).transition().duration(700).call(zoom.transform, target);
     };
 
     useImperativeHandle(
@@ -652,6 +660,13 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
         // Clicking the focused cluster again exits galaxy mode.
         resetView();
         return;
+      }
+      // Snapshot the user's current transform before entering galaxy mode
+      // — only when not already in one. Switching between clusters keeps
+      // the original snapshot so "Back" returns to the original spot, not
+      // the previous cluster.
+      if (focusedClusterLabel === null) {
+        preFocusTransformRef.current = d3.zoomTransform(svg);
       }
       const k = Math.min(CANVAS_W, CANVAS_H) / (target.radius * 4.2);
       const tx = CANVAS_W / 2 - target.centerX * k;
