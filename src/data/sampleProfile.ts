@@ -109,7 +109,14 @@ export const sampleProfile: TasteProfile = {
     "violence-as-spectacle without consequence",
     "quirky-for-quirky's-sake",
   ],
-  dislikedTitles: ["Sword Art Online", "The Walking Dead (post S4)"],
+  dislikedTitles: [
+    "Sword Art Online",
+    "The Walking Dead (post S4)",
+    "Ready Player One",
+    "The Boys",
+    "Westworld (post Season 1)",
+    "Stranger Things (post Season 3)",
+  ],
 };
 
 export const sampleLibrary: LibraryItem[] = [
@@ -342,6 +349,115 @@ export const sampleLibrary: LibraryItem[] = [
       "accountability without redemption shortcuts",
     ],
   },
+  {
+    id: "lib-synecdoche",
+    title: "Synecdoche, New York",
+    mediaType: "movie",
+    year: 2008,
+    rating: 5,
+    source: "library",
+    status: "consumed",
+    fitNote:
+      "Caden Cotard builds a life-sized replica of his life inside a warehouse, then casts actors to play himself watching himself. Kaufman's purest expression of the Russian-doll grief that runs through everything you respond to.",
+    tasteTags: [
+      "interior collapse rendered as world-building",
+      "earned sacrifice through sustained commitment",
+      "grieving community",
+    ],
+  },
+  {
+    id: "lib-bcs",
+    title: "Better Call Saul",
+    mediaType: "tv",
+    year: 2015,
+    rating: 5,
+    source: "library",
+    status: "consumed",
+    fitNote:
+      "Six seasons of Jimmy McGill's slow descent into Saul Goodman. Every season makes him worse and the show refuses to flinch — that's the accountability you respond to in shows like Bojack.",
+    tasteTags: [
+      "accountability without redemption shortcuts",
+      "interior collapse rendered as world-building",
+    ],
+  },
+  {
+    id: "lib-frieren",
+    title: "Frieren: Beyond Journey's End",
+    mediaType: "anime",
+    year: 2023,
+    rating: 5,
+    source: "library",
+    status: "consumed",
+    fitNote:
+      "An immortal mage realizes ten years after the demon king's defeat that her ten years with the now-dead human party were the only years she ever lived. Bittersweet long-form weight in fantasy clothes.",
+    tasteTags: [
+      "earned sacrifice through sustained commitment",
+      "interior collapse rendered as world-building",
+    ],
+  },
+  {
+    id: "lib-deathstranding",
+    title: "Death Stranding",
+    mediaType: "game",
+    year: 2019,
+    rating: 4,
+    source: "library",
+    status: "consumed",
+    fitNote:
+      "Sam Porter Bridges hauls cargo across a fractured America while ghosts of the old world try to drag him back. The mechanic IS the meaning — every step weighs.",
+    tasteTags: [
+      "earned sacrifice through sustained commitment",
+      "burden-carrying protagonist",
+      "found meaning over inherited meaning",
+    ],
+  },
+  {
+    id: "lib-theroad",
+    title: "The Road",
+    mediaType: "book",
+    year: 2006,
+    rating: 5,
+    source: "library",
+    status: "consumed",
+    fitNote:
+      "A father and son walk through ash-end of the world. McCarthy strips everything down to the question of whether continuing is itself love. Earned sacrifice with no audience.",
+    tasteTags: [
+      "earned sacrifice through sustained commitment",
+      "violence with moral residue",
+      "burden-carrying protagonist",
+    ],
+  },
+  {
+    id: "lib-20cb",
+    title: "20th Century Boys",
+    mediaType: "manga",
+    year: 1999,
+    rating: 5,
+    source: "library",
+    status: "consumed",
+    fitNote:
+      "A childhood doomsday game the kids forgot becomes the actual end of the world decades later. Urasawa makes the mechanism of memory itself the engine of dread.",
+    tasteTags: [
+      "accountability without redemption shortcuts",
+      "institutions failing the people inside them",
+    ],
+  },
+  {
+    id: "lib-childrenofmen",
+    title: "Children of Men",
+    mediaType: "movie",
+    year: 2006,
+    rating: 5,
+    source: "library",
+    status: "consumed",
+    fitNote:
+      "Cuarón's dystopia where humanity has stopped reproducing and Theo, broken and uncommitted, finds himself escorting the only pregnant woman alive through a collapsing England. Long takes that refuse to look away.",
+    tasteTags: [
+      "earned sacrifice through sustained commitment",
+      "violence with moral residue",
+      "institutions failing the people inside them",
+    ],
+  },
 ];
 
 export const sampleRecommendations: RecommendationItem[] = [
@@ -494,5 +610,65 @@ export const sampleRecommendations: RecommendationItem[] = [
     rating: null,
     explanation:
       "Scorsese uses a marriage as the lens for a systematic genocide. The camera refuses to look away from the slow corruption of love into complicity.",
+  },
+  {
+    id: "rec-severance",
+    title: "Severance",
+    mediaType: "tv",
+    year: 2022,
+    matchScore: 0.84,
+    tasteTags: [
+      "interior collapse rendered as world-building",
+      "institutions failing the people inside them",
+    ],
+    status: "saved",
+    rating: null,
+    explanation:
+      "Apple TV+'s elegant nightmare about consenting to surgically split your work-self from your home-self. The interior collapse becomes procedural — every season widens the gap between the two halves until something breaks.",
+  },
+  {
+    id: "rec-kevin",
+    title: "We Need to Talk About Kevin",
+    mediaType: "movie",
+    year: 2011,
+    matchScore: 0.83,
+    tasteTags: [
+      "accountability without redemption shortcuts",
+      "violence with moral residue",
+    ],
+    status: "plan_to",
+    rating: null,
+    explanation:
+      "Tilda Swinton's mother grapples with the school massacre her son committed; Ramsay refuses to grant the audience the catharsis of explanation. Accountability rendered as the texture of a life that has nowhere to go.",
+  },
+  {
+    id: "rec-halt",
+    title: "Halt and Catch Fire",
+    mediaType: "tv",
+    year: 2014,
+    matchScore: 0.78,
+    tasteTags: [
+      "earned sacrifice through sustained commitment",
+      "institutions failing the people inside them",
+    ],
+    status: "saved",
+    rating: null,
+    explanation:
+      "Four seasons of tech-industry strivers chasing the wrong dream just slightly too late, each time. The institutional grinding of The Wire applied to Silicon Valley, but warmer — about the people who keep trying.",
+  },
+  {
+    id: "rec-march",
+    title: "March Comes in Like a Lion",
+    mediaType: "anime",
+    year: 2016,
+    matchScore: 0.81,
+    tasteTags: [
+      "interior collapse rendered as world-building",
+      "found meaning over inherited meaning",
+    ],
+    status: "plan_to",
+    rating: null,
+    explanation:
+      "Rei Kiriyama is a 17-year-old shogi prodigy who can't talk to anyone. The show is a slow accumulation of quiet kindness from the Kawamoto sisters that he doesn't know how to receive. Bittersweet found-meaning at the pace you respond to.",
   },
 ];
