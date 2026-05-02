@@ -299,7 +299,7 @@ export function buildGraph(
 
   const clusters: ThemeCluster[] = profile.themes.map((theme, i) => {
     const angle = (i / profile.themes.length) * Math.PI * 2 - Math.PI / 2;
-    const orbitRadius = Math.min(CANVAS_W, CANVAS_H) * 0.32;
+    const orbitRadius = Math.min(CANVAS_W, CANVAS_H) * 0.38;
     const memberNodeIds = nodes
       .filter((n) => n.themes.includes(theme.label))
       .map((n) => n.id);
@@ -309,7 +309,7 @@ export function buildGraph(
       color: colorForThemeIndex(i),
       centerX: CANVAS_W / 2 + Math.cos(angle) * orbitRadius,
       centerY: CANVAS_H / 2 + Math.sin(angle) * orbitRadius,
-      radius: 60 + theme.weight * 90,
+      radius: 45 + theme.weight * 55,
       memberNodeIds,
     };
   });
