@@ -1,11 +1,10 @@
 import { useState } from "react";
-import type { Graph, ThemeCluster } from "../../types/graph";
+import type { ThemeCluster } from "../../types/graph";
 import type { TasteProfile } from "../../types/profile";
 
 interface Props {
   cluster: ThemeCluster | null;
   profile: TasteProfile;
-  graph: Graph;
   onClose: () => void;
 }
 
@@ -19,7 +18,7 @@ interface Props {
  * ~20% of items; theme evidence exists for every cluster, so rendering
  * is consistent.
  */
-export function ClusterPanel({ cluster, profile, graph, onClose }: Props) {
+export function ClusterPanel({ cluster, profile, onClose }: Props) {
   // Keep the last non-null cluster so the panel can finish its slide-out
   // animation after the focus is cleared. Same pattern as DetailPanel.
   const [displayCluster, setDisplayCluster] = useState<ThemeCluster | null>(
@@ -34,9 +33,6 @@ export function ClusterPanel({ cluster, profile, graph, onClose }: Props) {
   const theme = shown
     ? profile.themes.find((t) => t.label === shown.label)
     : null;
-  const memberCount = shown
-    ? graph.nodes.filter((n) => n.themes.includes(shown.label)).length
-    : 0;
 
   return (
     <aside
@@ -57,10 +53,6 @@ export function ClusterPanel({ cluster, profile, graph, onClose }: Props) {
               >
                 {shown.label}
               </h2>
-              <div className="mt-1 text-xs text-zinc-400">
-                weight {shown.weight.toFixed(2)} · {memberCount}{" "}
-                {memberCount === 1 ? "star" : "stars"}
-              </div>
             </div>
             <button
               type="button"

@@ -101,7 +101,6 @@ export function ConstellationView({
       <ClusterPanel
         cluster={focusedCluster}
         profile={profile}
-        graph={graph}
         onClose={() => canvasRef.current?.clearClusterFocus()}
       />
       <DetailPanel
