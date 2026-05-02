@@ -321,7 +321,7 @@ Current layout assumes ≥768px width. Mobile is unaddressed. The detail panel s
 - **All-in-one check**: `pnpm check` runs typecheck + lint + test. Use before pushing.
 - **Build**: `pnpm build` (`tsc -b && vite build`). Production output ~420KB / ~129KB gzipped.
 
-CI is not configured yet — `pnpm check` is the manual gate. Add GitHub Actions before opening Constellation up to outside contributors.
+CI is configured via `.github/workflows/check.yml` — runs `typecheck`, `lint`, `test`, and `build` on every push to main and on every PR. Uses pnpm 10, Node 22, frozen lockfile.
 
 ---
 
