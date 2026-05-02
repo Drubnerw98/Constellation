@@ -15,6 +15,11 @@ export interface GraphNode extends SimulationNodeDatum {
   themes: string[];
   archetypes: string[];
   source: "library" | "recommendation";
+  /** Theme label this node is positioned at. Picked via load-balanced greedy
+   * across the node's `themes`, so weaker themes still get residents instead
+   * of the highest-weight theme absorbing every multi-tag node. Distinct
+   * from `themes` (full membership, used for hover highlight + edges). */
+  primaryTheme: string | null;
 }
 
 export interface GraphEdge extends SimulationLinkDatum<GraphNode> {

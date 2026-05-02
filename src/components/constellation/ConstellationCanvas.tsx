@@ -61,13 +61,8 @@ function primaryClusterFor(
   d: GraphNode,
   byLabel: Map<string, ThemeCluster>,
 ): ThemeCluster | null {
-  let primary: ThemeCluster | null = null;
-  for (const t of d.themes) {
-    const c = byLabel.get(t);
-    if (!c) continue;
-    if (!primary || c.weight > primary.weight) primary = c;
-  }
-  return primary;
+  if (!d.primaryTheme) return null;
+  return byLabel.get(d.primaryTheme) ?? null;
 }
 
 export const ConstellationCanvas = forwardRef<

@@ -187,6 +187,7 @@ export function buildGraph(
       themes,
       archetypes,
       source: "library",
+      primaryTheme: null,
     });
   }
 
@@ -206,6 +207,7 @@ export function buildGraph(
       themes,
       archetypes,
       source: "recommendation",
+      primaryTheme: null,
     });
   }
 
@@ -216,6 +218,36 @@ export function buildGraph(
   const nodes = Array.from(nodesByTitle.values()).filter(
     (n) => n.themes.length > 0 || n.archetypes.length > 0,
   );
+
+  // Greedy load-balanced primary-theme assignment. Without this, the
+  // highest-weight theme absorbs every multi-tag node (a rec tagged with
+  // both [theme A weight 0.99, theme B weight 0.82] always picks A) and
+  // weaker themes end up as empty cluster glows. Sorting by candidate
+  // count ascending lets single-theme nodes claim their seats first, then
+  // multi-theme nodes fill in wherever it balances the visualization.
+  const themeWeight = new Map(profile.themes.map((t) => [t.label, t.weight]));
+  const memberCount = new Map<string, number>();
+  for (const t of profile.themes) memberCount.set(t.label, 0);
+  const balancingOrder = [...nodes].sort(
+    (a, b) => a.themes.length - b.themes.length,
+  );
+  for (const node of balancingOrder) {
+    if (node.themes.length === 0) continue;
+    let best: string | null = null;
+    let bestCount = Infinity;
+    let bestWeight = -1;
+    for (const themeLabel of node.themes) {
+      const count = memberCount.get(themeLabel) ?? 0;
+      const weight = themeWeight.get(themeLabel) ?? 0;
+      if (count < bestCount || (count === bestCount && weight > bestWeight)) {
+        best = themeLabel;
+        bestCount = count;
+        bestWeight = weight;
+      }
+    }
+    node.primaryTheme = best;
+    if (best) memberCount.set(best, (memberCount.get(best) ?? 0) + 1);
+  }
 
   const candidates: GraphEdge[] = [];
   for (let i = 0; i < nodes.length; i++) {
