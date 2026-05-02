@@ -64,6 +64,10 @@ export function ConstellationView({
 
   const canvasRef = useRef<ConstellationCanvasHandle>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Panel visibility is decoupled from node selection so closing the panel
+  // doesn't deselect the node — keeps connection lines visible after
+  // dismissing the panel (so the user can navigate via the canvas).
+  const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const [activeFormats, setActiveFormats] = useState<Set<MediaType>>(
     () => new Set(ALL_FORMATS),
   );
@@ -77,6 +81,26 @@ export function ConstellationView({
   const focusedCluster = focusedClusterLabel
     ? (graph.clusters.find((c) => c.label === focusedClusterLabel) ?? null)
     : null;
+
+  // Tap-to-toggle: tapping a different node selects + opens panel; tapping
+  // the same already-selected node toggles the panel; tapping null
+  // (background) clears both.
+  const handleSelect = useCallback(
+    (id: string | null) => {
+      if (id === null) {
+        setSelectedNodeId(null);
+        setDetailPanelOpen(false);
+        return;
+      }
+      if (id === selectedNodeId) {
+        setDetailPanelOpen((cur) => !cur);
+        return;
+      }
+      setSelectedNodeId(id);
+      setDetailPanelOpen(true);
+    },
+    [selectedNodeId],
+  );
 
   const toggleFormat = useCallback((format: MediaType) => {
     setActiveFormats((prev) => {
@@ -93,6 +117,7 @@ export function ConstellationView({
 
   const handleSearchPick = useCallback((id: string) => {
     setSelectedNodeId(id);
+    setDetailPanelOpen(true);
     canvasRef.current?.panToNode(id);
   }, []);
 
@@ -102,7 +127,7 @@ export function ConstellationView({
         ref={canvasRef}
         graph={graph}
         selectedNodeId={selectedNodeId}
-        onSelect={setSelectedNodeId}
+        onSelect={handleSelect}
         activeFormats={activeFormats}
         onFocusedClusterChange={setFocusedClusterLabel}
         showAllConnections={showAllConnections}
@@ -124,9 +149,17 @@ export function ConstellationView({
       />
       <DetailPanel
         node={selectedNode}
+        isOpen={detailPanelOpen && selectedNode !== null}
         graph={graph}
-        onClose={() => setSelectedNodeId(null)}
-        onSelectConnected={setSelectedNodeId}
+        // Closing the panel does NOT deselect the node — keeps connection
+        // lines visible so the user can follow them on the canvas. To
+        // fully clear, click the canvas background or pick a different
+        // node and toggle.
+        onClose={() => setDetailPanelOpen(false)}
+        onSelectConnected={(id) => {
+          setSelectedNodeId(id);
+          setDetailPanelOpen(true);
+        }}
       />
     </>
   );

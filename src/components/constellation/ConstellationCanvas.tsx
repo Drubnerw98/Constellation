@@ -1247,10 +1247,12 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
 
       </svg>
 
-      {/* Reset View button + double-tap hint rendered as HTML overlay
-          (not foreignObject) so they don't scale with the viewBox. */}
+      {/* Reset View button + double-tap hint, HTML overlay (not
+          foreignObject) so they don't scale with the viewBox.
+          Mobile: top-left (bottom is covered by bottom-sheet panels).
+          md+: bottom-left (where it lives on desktop). */}
       {(isZoomed || inGalaxyMode) && (
-        <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex flex-col items-start gap-1.5">
+        <div className="pointer-events-none absolute top-3 left-3 z-30 flex items-center gap-2 md:top-auto md:bottom-4 md:left-4">
           <button
             type="button"
             onClick={(e) => {
@@ -1259,11 +1261,11 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
             }}
             className="pointer-events-auto cursor-pointer rounded-md border border-white/10 bg-[var(--color-surface)] px-3.5 py-2.5 font-mono text-[11px] tracking-[0.18em] text-zinc-300 uppercase backdrop-blur-md transition-colors hover:border-white/20 hover:text-zinc-100"
           >
-            {inGalaxyMode ? "← Back" : "↺ Reset view"}
+            {inGalaxyMode ? "← Back" : "↺ Reset"}
           </button>
-          <p className="pl-1 font-mono text-[9px] tracking-[0.2em] text-zinc-600 uppercase">
-            or double-tap canvas
-          </p>
+          <span className="font-mono text-[9px] tracking-[0.2em] text-zinc-600 uppercase">
+            or 2× tap
+          </span>
         </div>
       )}
       </div>

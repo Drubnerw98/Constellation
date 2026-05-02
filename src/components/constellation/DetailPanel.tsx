@@ -3,6 +3,7 @@ import type { Graph, GraphNode } from "../../types/graph";
 
 interface Props {
   node: GraphNode | null;
+  isOpen: boolean;
   graph: Graph;
   onClose: () => void;
   onSelectConnected: (id: string) => void;
@@ -51,6 +52,7 @@ const SOURCE_LABEL: Record<GraphNode["source"], string> = {
 
 export function DetailPanel({
   node,
+  isOpen,
   graph,
   onClose,
   onSelectConnected,
@@ -64,7 +66,6 @@ export function DetailPanel({
     setDisplayNode(node);
   }
 
-  const isOpen = node !== null;
   const shown = displayNode;
 
   const clusterColor = (label: string): string =>
