@@ -36,6 +36,8 @@ describe("buildGraph", () => {
         year: 2020,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["beta", "wandering ronin"],
       },
     ];
@@ -45,7 +47,7 @@ describe("buildGraph", () => {
     expect(nodes[0]!.archetypes).toEqual(["wandering ronin"]);
   });
 
-  it("falls back to evidence substring matching when tasteTags absent", () => {
+  it("falls back to evidence substring matching when tasteTags empty", () => {
     const lib: LibraryItem[] = [
       {
         id: "l1",
@@ -54,6 +56,9 @@ describe("buildGraph", () => {
         year: 2020,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
+        tasteTags: [],
       },
     ];
     const { nodes } = buildGraph(baseProfile, lib, []);
@@ -89,6 +94,8 @@ describe("buildGraph", () => {
         year: 2020,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["alpha"],
       },
     ];
@@ -120,6 +127,8 @@ describe("buildGraph", () => {
         year: 2000,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["alpha"],
       },
       {
@@ -129,6 +138,8 @@ describe("buildGraph", () => {
         year: 2001,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["alpha"],
       },
     ];
@@ -147,6 +158,8 @@ describe("buildGraph", () => {
         year: 2000,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["alpha", "beta", "gamma", "wandering ronin", "broken cop"],
       },
       {
@@ -156,6 +169,8 @@ describe("buildGraph", () => {
         year: 2001,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["alpha"],
       },
     ];
@@ -173,6 +188,8 @@ describe("buildGraph", () => {
         year: 2000,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["alpha", "beta"],
       },
       {
@@ -182,6 +199,8 @@ describe("buildGraph", () => {
         year: 2001,
         rating: 5,
         source: "library",
+        status: "consumed",
+        fitNote: null,
         tasteTags: ["beta"],
       },
     ];
@@ -218,6 +237,8 @@ describe("buildGraph", () => {
       year: 2000 + i,
       rating: 5,
       source: "library" as const,
+      status: "consumed" as const,
+      fitNote: null,
       tasteTags: ["alpha"],
     }));
     const { edges, nodes } = buildGraph(baseProfile, lib, []);

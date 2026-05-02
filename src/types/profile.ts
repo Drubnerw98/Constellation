@@ -36,6 +36,8 @@ export interface TasteProfile {
   dislikedTitles?: string[];
 }
 
+export type LibraryItemStatus = "consumed" | "watchlist";
+
 export interface LibraryItem {
   id: string;
   title: string;
@@ -43,12 +45,42 @@ export interface LibraryItem {
   year: number | null;
   rating: number | null;
   source: "library";
-  /** Optional explicit theme/archetype tags. When present, used directly to
-   * place the title in clusters. When absent, the graph builder falls back to
-   * scanning theme `evidence` strings for the title. The Resonance API will
-   * eventually return these per-item; until then, we set them by hand on the
-   * sample profile so every library title clusters correctly. */
-  tasteTags?: string[];
+  /** "consumed" = user has read/watched/played; "watchlist" = plan-to-consume.
+   * Watchlist items skip AI annotation server-side (no experience to ground a
+   * fit note in), so they arrive with `fitNote: null` and `tasteTags: []` —
+   * the graph builder falls back to title-substring matching against profile
+   * evidence to position them. */
+  status: LibraryItemStatus;
+  /** AI-generated 1-2 sentence rationale for why THIS title fits THIS profile,
+   * written specifically for this item. Null for watchlist items and any rows
+   * still pending the post-rollout backfill. */
+  fitNote: string | null;
+  /** Canonical theme/archetype labels from the profile that this item
+   * exemplifies. Server-side validated against `profile.themes[].label ∪
+   * profile.archetypes[].label`; AI-generated tags that don't match are
+   * dropped before the row is written. Empty for watchlist + pre-backfill. */
+  tasteTags: string[];
+}
+
+/** Derived from `profile.mediaAffinities[].favorites` — the user's explicit
+ * "I love this" titles extracted during onboarding. Resonance pre-computes
+ * `themes`/`archetypes` by checking which profile evidence/attraction strings
+ * mention the title. Has no per-item AI rationale (favorites predate the
+ * annotation pipeline). */
+export interface Favorite {
+  title: string;
+  mediaType: MediaType;
+  themes: string[];
+  archetypes: string[];
+}
+
+/** Negative-space layer: things outside the user's taste. `pattern` items are
+ * abstract avoidances ("Mary Sue protagonists"); `title` items are specific
+ * disliked works ("The Last of Us"). Surfaced for future "anti-stars"
+ * rendering — currently shipped through the type chain but not visualized. */
+export interface Avoidance {
+  description: string;
+  kind: "pattern" | "title";
 }
 
 export type RecommendationStatus = "pending" | "saved" | "rated" | "plan_to";

@@ -84,10 +84,15 @@ constellation/
         ├── requireUser middleware: ensureUser(clerkId) → users.id
         ├── getActiveProfile(userId) → tasteProfiles row
         ├── listLibraryItems(userId).filter(source === "manual")
-        └── recommendations.findMany + dedupe by mediaCacheId
+        │   (each item carries fitNote + tasteTags from AI annotation;
+        │    watchlist items ship null/empty — no engagement to annotate)
+        ├── recommendations.findMany + dedupe by mediaCacheId
+        ├── derive favorites from profile.mediaAffinities[].favorites
+        │   (cluster-tagged via title-substring match against evidence)
+        └── derive avoidances from profile.avoidances + dislikedTitles
         │
         ▼
-  JSON response: { profile, library, recommendations }
+  JSON response: { profile, library, recommendations, favorites, avoidances }
         │
         ▼
   Constellation api.ts: filter recs by RENDERABLE_STATUSES
@@ -101,16 +106,21 @@ constellation/
         ▼
   Home route: pick top-N by signal strength
               (library by rating, recs by matchScore)
+              favorites pass through uncapped
               + sample fallback with banner if no-profile/error
         │
         ▼
-  buildGraph(profile, library, recommendations) → Graph
+  buildGraph(profile, library, recommendations, favorites) → Graph
         │
         ▼
   ConstellationView: D3 simulation + SVG render
 ```
 
 **Why filter `source === "manual"` server-side:** the user's `library_items` table can contain thousands of bulk-imported entries (Letterboxd, Goodreads, MAL, Steam). Those represent consumption history, not curated taste signal, and would overwhelm the visualization. The filter lives on the Resonance side so the network payload stays small (we don't ship 1600 items the client throws away).
+
+**Why ship favorites as a derived field instead of just shipping the profile:** the profile JSONB already contains `mediaAffinities[].favorites` as flat title strings. Resonance's `/api/profile/export` derives the `Favorite[]` shape (title + mediaType + cluster-tagged themes/archetypes) so consumers don't have to redo the title-substring match against evidence. Constellation also has a client-side `deriveFavorites` helper used by the sample/demo path; both produce identical output. The pre-derivation is API contract clarity — if a future consumer wants this data, it doesn't have to reimplement the derivation.
+
+**Why surface `avoidances`:** profile carries them but they were invisible before. Currently shipped through the type chain but not yet rendered — reserved for a future "anti-stars" / "negative space" layer in the constellation portrait.
 
 **Why the volume cap on the client:** even after the manual filter, an active user's recs and high-rated library items can exceed the simulation's tuned range. Capping to top-40 library by rating + top-25 recs by matchScore keeps the simulation in its sweet spot while preserving the highest-signal subset. See `routes/Home.tsx`.
 
@@ -140,9 +150,9 @@ Three routes, intentionally minimal:
 
 This is the **most opinionated** code in the repo. Five stages, each motivated by a real failure mode observed during real-data testing.
 
-### 5a. Title-substring matching (library items, no tasteTags)
+### 5a. Title-substring matching (library items with empty tasteTags)
 
-When a library item arrives without explicit `tasteTags` (the common case — Resonance doesn't currently AI-annotate library items), we determine cluster membership by checking which `profile.themes[i].evidence` strings mention the title. **Two-stage:**
+When a library item arrives with empty `tasteTags` — currently the case for watchlist items (Resonance skips AI annotation for plan-to-consume) and any pre-backfill rows — we determine cluster membership by checking which `profile.themes[i].evidence` strings mention the title. **Two-stage:**
 
 1. **Direct substring**: `normalize(evidence).includes(normalize(title))`. Catches short titles like "Aftersun", "Paterson", "Vinland Saga".
 2. **Token-overlap fallback** (when direct fails AND title has 2+ content tokens): match if any 2+ content tokens from the title appear as content tokens in the evidence text. Catches long titles like "The Assassination of Jesse James by the Coward Robert Ford" → matches evidence saying "Jesse James (4★)".
@@ -176,7 +186,15 @@ Each anchored node belongs to N theme clusters via `themes`. We need to pick ONE
 
 This algorithm is the difference between "5 clusters populated, 3 empty" and "all 8 clusters have residents" on a 13-node graph.
 
-### 5e. Edge pruning
+### 5e. Favorites integration
+
+Favorites enter the graph builder *after* library + recs but *before* the unanchored-node drop. They're inserted with a synthetic id (`fav-<normalized-title>`) since favorites have no DB primary key — they live as flat strings in profile JSONB.
+
+Insert order matters: `library → recommendations → favorites`. Earlier inserts win on title collision (dedupe by normalized title) since they carry richer data — a library item has rating + status + AI fitNote; a favorite is just a title string with cluster tags. If you have "Vinland Saga" both as a manual library item and as a favorite, the library node wins.
+
+Favorites' `themes`/`archetypes` come pre-validated from Resonance — canonical labels, no fuzzy matching needed at this stage.
+
+### 5f. Edge pruning
 
 Pairwise edges are computed via shared theme/archetype overlap (`shared / max(a.tagcount, b.tagcount)`). All pairs with `strength >= MIN_EDGE_STRENGTH (0.4)` are candidates. Then a **top-K-per-node cap (4)** prunes: an edge survives if it falls in either endpoint's top-4 by strength. Asymmetric ties survive (popular nodes accept many connections; sparse nodes cap at 4).
 
@@ -270,9 +288,15 @@ Current: themes orbit canvas center at fixed radius. The user has flagged that t
 
 Don't refactor unprompted. Surface options when the user revisits.
 
-### 9b. Density (20-40 nodes)
+### 9b. Density (20-40 nodes) — addressed
 
-Current real-data graph: 13 nodes (8 manual library + 5 pending recs). Target: 20-40. The path forward depends on Resonance-side work documented in `Resonance/CONSTELLATION_EXPORT_PLAN.md` — specifically surfacing `mediaAffinities[].favorites` (~25-30 additional nodes, no AI cost) and AI-annotating manual library items.
+Resolved by Resonance-side Phase 1 + 2 (see `Resonance/CONSTELLATION_EXPORT_PLAN.md`). Active user now sees: ~10 manual library items (with AI-generated `fitNote` + canonical `tasteTags`) + ~5 recs + ~25 favorites − dedupe overlap = ~35-40 nodes. Re-evaluate density tuning if real-world numbers come in significantly higher or lower.
+
+**Avoidances (`pattern` + `title`)** ship through the type chain but are not yet rendered. A future "anti-stars" or "negative space" layer should consume them — see open question 9d.
+
+### 9c. Anti-stars rendering
+
+`avoidances: Avoidance[]` arrives in the export but isn't visualized. A coherent rendering would surface them as desaturated/dashed/X'd-out nodes, possibly on a separate plane behind the main constellation, or as a peripheral ring labeled "outside your taste". Don't build speculatively — design first when surfacing them becomes the next user request.
 
 ### 9c. Layout for sparse profiles
 

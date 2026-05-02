@@ -1,5 +1,8 @@
 import type {
+  Avoidance,
+  Favorite,
   LibraryItem,
+  LibraryItemStatus,
   RecommendationItem,
   TasteProfile,
 } from "../types/profile";
@@ -8,6 +11,8 @@ export interface ProfileExport {
   profile: TasteProfile;
   library: LibraryItem[];
   recommendations: RecommendationItem[];
+  favorites: Favorite[];
+  avoidances: Avoidance[];
 }
 
 export class ApiError extends Error {
@@ -30,6 +35,18 @@ const apiBase = import.meta.env.VITE_RESONANCE_API_URL ?? "";
 // there).
 const RENDERABLE_STATUSES = new Set(["pending", "saved", "rated", "plan_to"]);
 
+interface RawLibraryItem {
+  id: string;
+  title: string;
+  mediaType: LibraryItem["mediaType"];
+  year: number | null;
+  rating: number | null;
+  source: "library";
+  status: LibraryItemStatus;
+  fitNote: string | null;
+  tasteTags: string[];
+}
+
 interface RawRecommendation {
   id: string;
   title: string;
@@ -39,9 +56,29 @@ interface RawRecommendation {
   tasteTags: string[];
   status: string;
   rating: number | null;
-  // Server-side rolled out separately; treat as optional during the brief
-  // window where the deployed Resonance version may not yet include it.
   explanation?: string | null;
+}
+
+interface RawFavorite {
+  title: string;
+  mediaType: Favorite["mediaType"];
+  themes: string[];
+  archetypes: string[];
+}
+
+interface RawAvoidance {
+  description: string;
+  kind: Avoidance["kind"];
+}
+
+interface RawProfileExport {
+  profile: TasteProfile;
+  library: RawLibraryItem[];
+  recommendations: RawRecommendation[];
+  // Server-side rolled out separately; treat as optional during the brief
+  // window where the deployed Resonance version may not yet include them.
+  favorites?: RawFavorite[];
+  avoidances?: RawAvoidance[];
 }
 
 export async function fetchProfileExport(
@@ -68,11 +105,7 @@ export async function fetchProfileExport(
     }
     throw new ApiError(message, res.status);
   }
-  const raw = (await res.json()) as {
-    profile: TasteProfile;
-    library: LibraryItem[];
-    recommendations: RawRecommendation[];
-  };
+  const raw = (await res.json()) as RawProfileExport;
   return {
     profile: raw.profile,
     library: raw.library,
@@ -83,5 +116,7 @@ export async function fetchProfileExport(
         status: r.status as RecommendationItem["status"],
         explanation: r.explanation ?? null,
       })),
+    favorites: raw.favorites ?? [],
+    avoidances: raw.avoidances ?? [],
   };
 }

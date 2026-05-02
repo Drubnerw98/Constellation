@@ -9,6 +9,7 @@ import { SearchInput } from "./controls/SearchInput";
 import { buildGraph } from "../lib/graph";
 import type { MediaType } from "../types/graph";
 import type {
+  Favorite,
   LibraryItem,
   RecommendationItem,
   TasteProfile,
@@ -27,6 +28,7 @@ interface Props {
   profile: TasteProfile;
   library: LibraryItem[];
   recommendations: RecommendationItem[];
+  favorites: Favorite[];
 }
 
 /**
@@ -38,10 +40,11 @@ export function ConstellationView({
   profile,
   library,
   recommendations,
+  favorites,
 }: Props) {
   const graph = useMemo(
-    () => buildGraph(profile, library, recommendations),
-    [profile, library, recommendations],
+    () => buildGraph(profile, library, recommendations, favorites),
+    [profile, library, recommendations, favorites],
   );
 
   const canvasRef = useRef<ConstellationCanvasHandle>(null);

@@ -1,7 +1,8 @@
 import type {
-  TasteProfile,
+  Favorite,
   LibraryItem,
   RecommendationItem,
+  TasteProfile,
 } from "../types/profile";
 import type { Graph, GraphEdge, GraphNode, ThemeCluster } from "../types/graph";
 import { colorForThemeIndex } from "./colors";
@@ -203,22 +204,51 @@ function archetypesForLibraryTitle(
     .map((a) => a.label);
 }
 
+/**
+ * Compute favorites client-side from a TasteProfile by flattening
+ * `mediaAffinities[].favorites` and tagging each title via title-substring
+ * match against profile evidence/attraction.
+ *
+ * Mirrors Resonance's server-side derivation in `/api/profile/export` so
+ * sample data (and any future no-network path) produces identical output
+ * to the API. The real-data path uses the API-provided favorites array
+ * directly — this is for fallback / sample / demo only.
+ */
+export function deriveFavorites(profile: TasteProfile): Favorite[] {
+  return profile.mediaAffinities.flatMap((affinity) =>
+    affinity.favorites.map((title) => ({
+      title,
+      mediaType: affinity.format,
+      themes: profile.themes
+        .filter((t) => titleAppearsIn(title, t.evidence))
+        .map((t) => t.label),
+      archetypes: profile.archetypes
+        .filter((a) => titleAppearsIn(title, a.attraction))
+        .map((a) => a.label),
+    })),
+  );
+}
+
 export function buildGraph(
   profile: TasteProfile,
   library: LibraryItem[],
   recommendations: RecommendationItem[],
+  favorites: Favorite[] = [],
 ): Graph {
   const themeLabels = new Set(profile.themes.map((t) => t.label));
   const archetypeLabels = new Set(profile.archetypes.map((a) => a.label));
   const nodesByTitle = new Map<string, GraphNode>();
 
+  // Insert order: library → recommendations → favorites. Earlier inserts
+  // win on title collision since they carry richer per-item data (rating,
+  // explicit user action, AI explanation). Favorites are flat title strings
+  // with no id/year/rating, so they should never overwrite a library or rec.
   for (const item of library) {
-    const tagged = item.tasteTags ?? [];
-    const themes = tagged.length
-      ? matchLabelsFromTags(tagged, themeLabels)
+    const themes = item.tasteTags.length
+      ? matchLabelsFromTags(item.tasteTags, themeLabels)
       : themesForLibraryTitle(item.title, profile);
-    const archetypes = tagged.length
-      ? matchLabelsFromTags(tagged, archetypeLabels)
+    const archetypes = item.tasteTags.length
+      ? matchLabelsFromTags(item.tasteTags, archetypeLabels)
       : archetypesForLibraryTitle(item.title, profile);
     nodesByTitle.set(normalize(item.title), {
       id: item.id,
@@ -227,12 +257,14 @@ export function buildGraph(
       year: item.year,
       rating: item.rating,
       matchScore: null,
-      status: "library",
+      status: item.status === "watchlist" ? "watchlist" : "library",
       themes,
       archetypes,
       source: "library",
       primaryTheme: null,
-      explanation: null,
+      // Library fitNote shares the detail-panel "Why this fits" surface
+      // with rec.explanation. Same UI contract; different data origin.
+      explanation: item.fitNote,
     });
   }
 
@@ -254,6 +286,30 @@ export function buildGraph(
       source: "recommendation",
       primaryTheme: null,
       explanation: rec.explanation,
+    });
+  }
+
+  // Favorites come pre-tagged from Resonance with canonical theme +
+  // archetype labels (server-side titleAppearsIn against profile evidence).
+  // No fuzzy re-matching needed — they're already validated against the
+  // canonical label set. Synthetic id "fav-<normalized>" since favorites
+  // have no DB primary key (they live in profile JSONB).
+  for (const fav of favorites) {
+    const key = normalize(fav.title);
+    if (nodesByTitle.has(key)) continue;
+    nodesByTitle.set(key, {
+      id: `fav-${key.replace(/\s+/g, "-")}`,
+      title: fav.title,
+      mediaType: fav.mediaType,
+      year: null,
+      rating: null,
+      matchScore: null,
+      status: "favorite",
+      themes: fav.themes,
+      archetypes: fav.archetypes,
+      source: "library",
+      primaryTheme: null,
+      explanation: null,
     });
   }
 

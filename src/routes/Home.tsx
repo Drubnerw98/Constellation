@@ -7,7 +7,9 @@ import {
   sampleRecommendations,
 } from "../data/sampleProfile";
 import { useResonanceProfile } from "../hooks/useResonanceProfile";
+import { deriveFavorites } from "../lib/graph";
 import type {
+  Favorite,
   LibraryItem,
   RecommendationItem,
   TasteProfile,
@@ -17,6 +19,7 @@ interface ResolvedData {
   profile: TasteProfile;
   library: LibraryItem[];
   recommendations: RecommendationItem[];
+  favorites: Favorite[];
   bannerMessage: string | null;
 }
 
@@ -30,6 +33,12 @@ export function Home() {
   const profileStatus = useResonanceProfile();
 
   const data = useMemo<ResolvedData>(() => {
+    const sampleFallback = {
+      profile: sampleProfile,
+      library: sampleLibrary,
+      recommendations: sampleRecommendations,
+      favorites: deriveFavorites(sampleProfile),
+    };
     switch (profileStatus.state) {
       case "ready": {
         // Cap volume — the simulation + visual density are tuned for tens
@@ -37,6 +46,8 @@ export function Home() {
         // the highest-signal subset: library by rating desc (loved most),
         // recommendations by matchScore desc (best fit). The visualization
         // intent is "what you're drawn to", not "everything you logged".
+        // Favorites pass through uncapped — typical user has ~25-30 and
+        // they dedupe heavily against library/recs in the graph builder.
         const LIBRARY_CAP = 40;
         const RECS_CAP = 25;
         const library = [...profileStatus.data.library]
@@ -49,31 +60,26 @@ export function Home() {
           profile: profileStatus.data.profile,
           library,
           recommendations,
+          favorites: profileStatus.data.favorites,
           bannerMessage: null,
         };
       }
       case "no-profile":
         return {
-          profile: sampleProfile,
-          library: sampleLibrary,
-          recommendations: sampleRecommendations,
+          ...sampleFallback,
           bannerMessage:
             "No Resonance profile yet — showing the sample. Finish onboarding in Resonance to see yours.",
         };
       case "error":
         return {
-          profile: sampleProfile,
-          library: sampleLibrary,
-          recommendations: sampleRecommendations,
+          ...sampleFallback,
           bannerMessage: `Couldn't load your profile (${profileStatus.message}). Showing the sample.`,
         };
       case "loading":
       case "idle":
       default:
         return {
-          profile: sampleProfile,
-          library: sampleLibrary,
-          recommendations: sampleRecommendations,
+          ...sampleFallback,
           bannerMessage: null,
         };
     }
@@ -85,6 +91,7 @@ export function Home() {
         profile={data.profile}
         library={data.library}
         recommendations={data.recommendations}
+        favorites={data.favorites}
       />
       <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-2">
         <div className="pointer-events-auto rounded-full border border-white/10 bg-[#0b0f1a]/85 p-1 backdrop-blur-md">

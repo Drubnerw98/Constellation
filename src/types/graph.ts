@@ -2,7 +2,14 @@ import type { SimulationNodeDatum, SimulationLinkDatum } from "d3";
 
 export type MediaType = "movie" | "tv" | "anime" | "manga" | "game" | "book";
 
-export type NodeStatus = "library" | "pending" | "saved" | "rated" | "plan_to";
+export type NodeStatus =
+  | "library" // consumed manual library item
+  | "watchlist" // plan-to-consume manual library item
+  | "favorite" // mediaAffinities.favorites entry, no per-item annotation
+  | "pending"
+  | "saved"
+  | "rated"
+  | "plan_to";
 
 export interface GraphNode extends SimulationNodeDatum {
   id: string;
@@ -20,8 +27,11 @@ export interface GraphNode extends SimulationNodeDatum {
    * of the highest-weight theme absorbing every multi-tag node. Distinct
    * from `themes` (full membership, used for hover highlight + edges). */
   primaryTheme: string | null;
-  /** Per-item rationale (recs only). The AI's reason this title fits the
-   * user's taste, scoped to this title — not the profile-wide evidence. */
+  /** Per-item rationale. For recommendations, this is `r.explanation`; for
+   * library items, it's `library.fitNote`. Same UI surface ("Why this fits"
+   * in the detail panel) — distinct from profile-wide theme.evidence which
+   * cites every supporting title for the theme. Null for favorites (no AI
+   * rationale exists) and watchlist items (no engagement to ground one in). */
   explanation: string | null;
 }
 

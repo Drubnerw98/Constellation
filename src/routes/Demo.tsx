@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   SignInButton,
@@ -11,6 +12,7 @@ import {
   sampleLibrary,
   sampleRecommendations,
 } from "../data/sampleProfile";
+import { deriveFavorites } from "../lib/graph";
 
 /**
  * Stable demo URL backed by the curated sample profile. Always available,
@@ -18,12 +20,20 @@ import {
  * viewers and the "View demo" CTA on the landing page.
  */
 export function Demo() {
+  // Derive favorites client-side for the demo path — Resonance's server-side
+  // derivation isn't available without a network round-trip, but the same
+  // titleAppearsIn logic produces identical output from the sample profile.
+  const sampleFavorites = useMemo(
+    () => deriveFavorites(sampleProfile),
+    [],
+  );
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#05060a] text-white">
       <ConstellationView
         profile={sampleProfile}
         library={sampleLibrary}
         recommendations={sampleRecommendations}
+        favorites={sampleFavorites}
       />
       <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-2">
         <Link

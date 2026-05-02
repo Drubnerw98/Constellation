@@ -120,6 +120,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2019,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Thorfinn's vengeance arc collapses into pacifism over 200+ chapters. The cost of every slain enemy compounds; the manga lets the conversion breathe instead of staging it.",
     tasteTags: [
       "earned sacrifice through sustained commitment",
       "violence with moral residue",
@@ -135,6 +138,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2019,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Harry Du Bois investigates a hanging while his consciousness fragments into competing voices. Revachol is a city of failed revolutions — every interior collapse is also a system collapse.",
     tasteTags: [
       "accountability without redemption shortcuts",
       "interior collapse rendered as world-building",
@@ -150,6 +156,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2009,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Tarantino refuses comfort for any of his monsters — the Nazi-killers are also enthusiastic killers, and the climax indicts the audience for cheering.",
     tasteTags: [
       "accountability without redemption shortcuts",
       "violence with moral residue",
@@ -162,6 +171,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2014,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Three seasons of grief without explanation. Mapleton's institutions fail, the GR fails, but Kevin Garvey keeps walking — catharsis earned through pure endurance.",
     tasteTags: [
       "earned sacrifice through sustained commitment",
       "interior collapse rendered as world-building",
@@ -176,6 +188,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 1989,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Guts carries his sword and his grief through 30+ years of pages. Every kill scars him further; the violence never resolves into peace, only into more carrying.",
     tasteTags: ["violence with moral residue", "burden-carrying protagonist"],
   },
   {
@@ -185,6 +200,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2014,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "A talking horse's depression rendered as set design — the world bends to his self-loathing. Six seasons making him face the wreckage; no redemption shortcut offered.",
     tasteTags: [
       "interior collapse rendered as world-building",
       "accountability without redemption shortcuts",
@@ -197,6 +215,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2014,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Cohle and Hart investigate a Louisiana cult while their own marriages and minds collapse. The case is the reflection — the Yellow King's rituals are also their rituals.",
     tasteTags: [
       "broken detective",
       "interior collapse rendered as world-building",
@@ -210,6 +231,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2007,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Daniel Plainview's oilman ascent is also his soul's descent. The film refuses to let him repent — there is no redemption, only the wreckage he authored.",
     tasteTags: [
       "accountability without redemption shortcuts",
       "violence with moral residue",
@@ -222,6 +246,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2007,
     rating: 4,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "A killer who's never caught warps three men's lives. Fincher shows the institution — SFPD, the press — failing them as much as the unsolved case does.",
     tasteTags: [
       "broken detective",
       "institutions failing the people inside them",
@@ -234,6 +261,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2019,
     rating: 4,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "A 12-day plague survival sim where you fail your patients more often than you save them. The town is grieving, the systems are collapsing, and the game never lies about it.",
     tasteTags: [
       "interior collapse rendered as world-building",
       "earned sacrifice through sustained commitment",
@@ -247,6 +277,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2019,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "A 22-minute time loop in a doomed solar system. Meaning isn't given by the universe — you assemble it from the logs of a dead civilization.",
     tasteTags: ["found meaning over inherited meaning"],
   },
   {
@@ -256,6 +289,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 2005,
     rating: 4,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "A wandering scholar studies spirit-organisms across 1860s Japan. Each episode is a small encounter with something inhuman; the search itself is the meaning.",
     tasteTags: ["found meaning over inherited meaning"],
   },
   {
@@ -265,6 +301,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 1998,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "Inoue's adaptation of Musashi rejects the warrior ideal one duel at a time. Every fight makes him more tired; eventually he has to put down the sword and farm.",
     tasteTags: [
       "earned sacrifice through sustained commitment",
       "violence with moral residue",
@@ -279,6 +318,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 1965,
     rating: 5,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "A Missouri farmer's son becomes an English professor and quietly endures every disappointment of a small life. The novel's case for ordinary endurance as a form of heroism.",
     tasteTags: [
       "earned sacrifice through sustained commitment",
       "interior collapse rendered as world-building",
@@ -292,6 +334,9 @@ export const sampleLibrary: LibraryItem[] = [
     year: 1985,
     rating: 4,
     source: "library",
+    status: "consumed",
+    fitNote:
+      "McCarthy's Western refuses to romanticize a single one of its scalp-hunters. The Judge is the violence, and the Judge wins. Accountability without any redemption.",
     tasteTags: [
       "violence with moral residue",
       "accountability without redemption shortcuts",
