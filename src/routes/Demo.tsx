@@ -13,7 +13,7 @@ import {
   sampleLibrary,
   sampleRecommendations,
 } from "../data/sampleProfile";
-import { deriveFavorites } from "../lib/graph";
+import { deriveAvoidances, deriveFavorites } from "../lib/graph";
 
 /**
  * Stable demo URL backed by the curated sample profile. Always available,
@@ -21,11 +21,11 @@ import { deriveFavorites } from "../lib/graph";
  * viewers and the "View demo" CTA on the landing page.
  */
 export function Demo() {
-  // Derive favorites client-side for the demo path — Resonance's server-side
-  // derivation isn't available without a network round-trip, but the same
-  // titleAppearsIn logic produces identical output from the sample profile.
-  const sampleFavorites = useMemo(
-    () => deriveFavorites(sampleProfile),
+  // Derive favorites + avoidances client-side for the demo path — same
+  // logic Resonance applies server-side, just no network round-trip.
+  const sampleFavorites = useMemo(() => deriveFavorites(sampleProfile), []);
+  const sampleAvoidances = useMemo(
+    () => deriveAvoidances(sampleProfile),
     [],
   );
   return (
@@ -35,6 +35,7 @@ export function Demo() {
         library={sampleLibrary}
         recommendations={sampleRecommendations}
         favorites={sampleFavorites}
+        avoidances={sampleAvoidances}
       />
       <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-3">
         <SiteMark />

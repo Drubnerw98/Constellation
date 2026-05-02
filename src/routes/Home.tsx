@@ -8,8 +8,9 @@ import {
   sampleRecommendations,
 } from "../data/sampleProfile";
 import { useResonanceProfile } from "../hooks/useResonanceProfile";
-import { deriveFavorites } from "../lib/graph";
+import { deriveAvoidances, deriveFavorites } from "../lib/graph";
 import type {
+  Avoidance,
   Favorite,
   LibraryItem,
   RecommendationItem,
@@ -21,6 +22,7 @@ interface ResolvedData {
   library: LibraryItem[];
   recommendations: RecommendationItem[];
   favorites: Favorite[];
+  avoidances: Avoidance[];
   bannerMessage: string | null;
 }
 
@@ -39,6 +41,7 @@ export function Home() {
       library: sampleLibrary,
       recommendations: sampleRecommendations,
       favorites: deriveFavorites(sampleProfile),
+      avoidances: deriveAvoidances(sampleProfile),
     };
     switch (profileStatus.state) {
       case "ready": {
@@ -62,6 +65,7 @@ export function Home() {
           library,
           recommendations,
           favorites: profileStatus.data.favorites,
+          avoidances: profileStatus.data.avoidances,
           bannerMessage: null,
         };
       }
@@ -93,6 +97,7 @@ export function Home() {
         library={data.library}
         recommendations={data.recommendations}
         favorites={data.favorites}
+        avoidances={data.avoidances}
       />
       <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-3">
         <SiteMark />

@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import type {
+  Avoidance,
   Favorite,
   LibraryItem,
   RecommendationItem,
@@ -243,6 +244,25 @@ function titleAlreadyPresent(
  * to the API. The real-data path uses the API-provided favorites array
  * directly — this is for fallback / sample / demo only.
  */
+/**
+ * Compute structured Avoidance[] from a TasteProfile by merging
+ * profile.avoidances (kind: pattern) and profile.dislikedTitles (kind:
+ * title). Mirrors Resonance's server-side derivation; used by sample/
+ * demo paths where there's no network round-trip.
+ */
+export function deriveAvoidances(profile: TasteProfile): Avoidance[] {
+  return [
+    ...profile.avoidances.map((description) => ({
+      description,
+      kind: "pattern" as const,
+    })),
+    ...(profile.dislikedTitles ?? []).map((description) => ({
+      description,
+      kind: "title" as const,
+    })),
+  ];
+}
+
 export function deriveFavorites(profile: TasteProfile): Favorite[] {
   return profile.mediaAffinities.flatMap((affinity) =>
     affinity.favorites.map((title) => ({

@@ -296,9 +296,11 @@ Resolved by Resonance-side Phase 1 + 2 (see `Resonance/CONSTELLATION_EXPORT_PLAN
 
 **Avoidances (`pattern` + `title`)** ship through the type chain but are not yet rendered. A future "anti-stars" or "negative space" layer should consume them — see open question 9d.
 
-### 9c. Anti-stars rendering
+### 9c. Anti-stars rendering — partial
 
-`avoidances: Avoidance[]` arrives in the export but isn't visualized. A coherent rendering would surface them as desaturated/dashed/X'd-out nodes, possibly on a separate plane behind the main constellation, or as a peripheral ring labeled "outside your taste". Don't build speculatively — design first when surfacing them becomes the next user request.
+Disliked titles (avoidance kind === "title") render as muted X glyphs at the canvas perimeter, in the negative space outside the cluster orbits. Layer sits between starfield and clusters; dims further in galaxy mode to give the focused cluster prominence. Native SVG `<title>` provides hover affordance.
+
+Pattern avoidances (kind === "pattern", abstract — "Mary Sue protagonists who face no real cost") are NOT yet surfaced visually — they don't have a title to attach to. Future surface options: a footer strip with mono captions, a toggleable panel, or per-cluster relevance in the cluster panel.
 
 ### 9c. Layout for sparse profiles
 

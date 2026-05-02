@@ -13,6 +13,7 @@ import type {
   GraphEdge,
   ThemeCluster,
 } from "../../types/graph";
+import type { Avoidance } from "../../types/profile";
 
 interface Props {
   graph: Graph;
@@ -27,6 +28,10 @@ interface Props {
    * Lets users declutter the canvas to focus on one title at a time.
    * When true (default), all edges render with the existing opacity rules. */
   showAllConnections?: boolean;
+  /** Profile-level avoidances — disliked titles render as anti-stars
+   * (X marks) at the canvas perimeter; pattern avoidances are not yet
+   * surfaced visually. */
+  avoidances?: Avoidance[];
 }
 
 export interface ConstellationCanvasHandle {
@@ -301,6 +306,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       activeFormats,
       onFocusedClusterChange,
       showAllConnections = true,
+      avoidances = [],
     },
     ref,
   ) {
@@ -353,6 +359,43 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
           .slice(0, 8),
       [stars],
     );
+
+    // Anti-stars: disliked titles rendered as muted X glyphs around the
+    // canvas perimeter, in the negative space outside the cluster orbits.
+    // Visualizes "what's outside your taste" — completes the portrait
+    // alongside the (positive) constellation. Pattern avoidances are
+    // skipped here; they're abstract and would need a different surface.
+    // Positions are seeded per profile so the same disliked set always
+    // lays out the same way.
+    const antiStars = useMemo(() => {
+      const titles = avoidances
+        .filter((a) => a.kind === "title")
+        .map((a) => a.description);
+      if (titles.length === 0)
+        return [] as { title: string; x: number; y: number }[];
+      let seed = 7919;
+      for (const t of titles)
+        for (let i = 0; i < t.length; i++) {
+          seed = ((seed * 31) ^ t.charCodeAt(i)) | 0;
+        }
+      const rand = () => {
+        seed = ((seed * 1664525) + 1013904223) | 0;
+        return ((seed >>> 0) % 1_000_000) / 1_000_000;
+      };
+      const baseR = Math.min(CANVAS_W, CANVAS_H) * 0.46;
+      const margin = 40;
+      return titles.map((title, i) => {
+        const evenAngle = (i / titles.length) * Math.PI * 2 - Math.PI / 4;
+        const jitter = (rand() - 0.5) * (Math.PI / titles.length) * 0.7;
+        const angle = evenAngle + jitter;
+        const r = baseR + (rand() - 0.5) * 40;
+        let x = CANVAS_W / 2 + Math.cos(angle) * r;
+        let y = CANVAS_H / 2 + Math.sin(angle) * r;
+        x = Math.max(margin, Math.min(CANVAS_W - margin, x));
+        y = Math.max(margin, Math.min(CANVAS_H - margin, y));
+        return { title, x, y };
+      });
+    }, [avoidances]);
 
     // Staggered fade-in on first load: stars come up first as a backdrop, then
     // each title star twinkles in. Skipped under prefers-reduced-motion so
@@ -875,6 +918,54 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               />
             ))}
           </g>
+
+          {/* Anti-stars layer — disliked titles as X marks around the
+              perimeter. Painted between starfield and clusters so they
+              read as "negative space markers" — visible but secondary
+              to the constellation itself. Dim further in galaxy mode
+              to focus attention on the active cluster. */}
+          {antiStars.length > 0 && (
+            <g
+              className="anti-stars"
+              opacity={
+                starfieldLit ? (focusedClusterLabel !== null ? 0.15 : 0.5) : 0
+              }
+              style={{
+                transition: prefersReducedMotion
+                  ? "none"
+                  : "opacity 600ms ease",
+              }}
+            >
+              {antiStars.map((a, i) => (
+                <g
+                  key={i}
+                  transform={`translate(${a.x},${a.y})`}
+                >
+                  <circle cx={0} cy={0} r={22} fill="transparent">
+                    <title>{`✗ ${a.title} — outside your taste`}</title>
+                  </circle>
+                  <line
+                    x1={-7}
+                    y1={-7}
+                    x2={7}
+                    y2={7}
+                    stroke="#a1a8b3"
+                    strokeWidth={1.4}
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1={-7}
+                    y1={7}
+                    x2={7}
+                    y2={-7}
+                    stroke="#a1a8b3"
+                    strokeWidth={1.4}
+                    strokeLinecap="round"
+                  />
+                </g>
+              ))}
+            </g>
+          )}
 
           <g className="clusters">
             {clusters.map((c, i) => {

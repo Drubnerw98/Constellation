@@ -10,6 +10,7 @@ import { SearchInput } from "./controls/SearchInput";
 import { buildGraph, type ClusterScaleMode } from "../lib/graph";
 import type { MediaType } from "../types/graph";
 import type {
+  Avoidance,
   Favorite,
   LibraryItem,
   RecommendationItem,
@@ -30,6 +31,7 @@ interface Props {
   library: LibraryItem[];
   recommendations: RecommendationItem[];
   favorites: Favorite[];
+  avoidances: Avoidance[];
 }
 
 /**
@@ -42,6 +44,7 @@ export function ConstellationView({
   library,
   recommendations,
   favorites,
+  avoidances,
 }: Props) {
   const [clusterScaleMode, setClusterScaleMode] =
     useState<ClusterScaleMode>("weight");
@@ -131,6 +134,7 @@ export function ConstellationView({
         activeFormats={activeFormats}
         onFocusedClusterChange={setFocusedClusterLabel}
         showAllConnections={showAllConnections}
+        avoidances={avoidances}
       />
       <SearchInput graph={graph} onPick={handleSearchPick} />
       <FilterBar
