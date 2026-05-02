@@ -17,7 +17,12 @@ const MIN_EDGE_STRENGTH = 0.4;
 const MAX_EDGES_PER_NODE = 4;
 
 function normalize(title: string): string {
-  return title.trim().toLowerCase().replace(/\s+/g, " ");
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/[-_/]+/g, " ")
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 // Minimum length on the shorter side of a substring match. Stops trivial
@@ -26,28 +31,79 @@ function normalize(title: string): string {
 // theme.
 const FUZZY_MIN_LEN = 4;
 
+const STOPWORDS = new Set([
+  "a", "an", "the", "and", "or", "but", "of", "as", "is", "in", "on", "to",
+  "for", "with", "without", "into", "through", "from", "by", "at",
+  "be", "been", "being", "have", "has", "had", "do", "does", "did",
+  "their", "its", "his", "her", "they", "them", "this", "that", "these",
+  "those", "it", "we", "you", "he", "she",
+  "who", "whom", "what", "which", "where", "when", "why", "how",
+  "own", "not", "no", "yes",
+]);
+
+function contentTokens(normalized: string): string[] {
+  return normalized
+    .split(" ")
+    .filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+}
+
 /**
  * Reconcile an AI-generated tag against a set of canonical labels.
  *
  * The AI is *instructed* to emit theme/archetype labels verbatim, but in
- * practice it paraphrases or shortens ("meaning-making" for "found meaning
- * over inherited meaning"). Strict exact-match drops those, leaving nodes
- * unanchored and piled at the canvas center.
+ * practice it paraphrases or shortens ("sacrifice" for "earned sacrifice
+ * through sustained commitment"). Three tiers of matching:
  *
- * Returns the canonical label string when a match is found, so downstream
- * code (cluster member lookups, edge sharing) continues to compare against
- * the canonical label set.
+ *   1. Exact normalized match — the happy path.
+ *   2. Full-string substring (4+ chars on shorter side) — catches concise
+ *      forms of long labels.
+ *   3. Content-word overlap with bidirectional within-token substring —
+ *      catches single-word tags ("burden") against multi-word labels
+ *      ("burden-carrying protagonist...") and morphology drift ("noble"
+ *      vs. "nobility").
+ *
+ * Returns the canonical label string when matched, so downstream code
+ * (cluster member lookups, edge sharing) compares against canonical labels.
  */
 function matchLabel(tag: string, labels: Set<string>): string | null {
   const norm = normalize(tag);
+  if (!norm) return null;
+
+  for (const label of labels) {
+    if (norm === normalize(label)) return label;
+  }
   for (const label of labels) {
     const labelNorm = normalize(label);
-    if (norm === labelNorm) return label;
     const shorter = Math.min(norm.length, labelNorm.length);
     if (shorter < FUZZY_MIN_LEN) continue;
     if (labelNorm.includes(norm) || norm.includes(labelNorm)) return label;
   }
-  return null;
+
+  const tagTokens = contentTokens(norm);
+  if (tagTokens.length === 0) return null;
+  let bestLabel: string | null = null;
+  let bestScore = 0;
+  for (const label of labels) {
+    const labelTokens = contentTokens(normalize(label));
+    let score = 0;
+    for (const tt of tagTokens) {
+      for (const lt of labelTokens) {
+        if (
+          tt === lt ||
+          (tt.length >= 4 && lt.includes(tt)) ||
+          (lt.length >= 4 && tt.includes(lt))
+        ) {
+          score++;
+          break;
+        }
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestLabel = label;
+    }
+  }
+  return bestScore > 0 ? bestLabel : null;
 }
 
 function matchLabelsFromTags(tags: string[], labels: Set<string>): string[] {
