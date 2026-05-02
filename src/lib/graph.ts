@@ -115,10 +115,38 @@ function matchLabelsFromTags(tags: string[], labels: Set<string>): string[] {
   return Array.from(matched);
 }
 
+/**
+ * Match a library title against a piece of evidence/attraction text.
+ *
+ * AI-generated profile evidence references titles by their familiar short
+ * form ("Jesse James", "First Law") rather than their canonical library
+ * form ("The Assassination of Jesse James by the Coward Robert Ford",
+ * "First Law Trilogy Boxed Set..."). Direct substring fails on long titles.
+ *
+ * Two-step: try the full normalized substring; if that misses and the title
+ * has 2+ content tokens, accept a 2+ content-token overlap as a match.
+ * The 2-token threshold prevents single common words like "the" or "story"
+ * from triggering false matches.
+ */
+function titleAppearsIn(title: string, text: string): boolean {
+  const titleNorm = normalize(title);
+  const textNorm = normalize(text);
+  if (textNorm.includes(titleNorm)) return true;
+
+  const titleTokens = contentTokens(titleNorm);
+  if (titleTokens.length < 2) return false;
+  const textTokens = new Set(contentTokens(textNorm));
+  let overlap = 0;
+  for (const tt of titleTokens) {
+    if (textTokens.has(tt)) overlap++;
+    if (overlap >= 2) return true;
+  }
+  return false;
+}
+
 function themesForLibraryTitle(title: string, profile: TasteProfile): string[] {
-  const needle = normalize(title);
   return profile.themes
-    .filter((t) => normalize(t.evidence).includes(needle))
+    .filter((t) => titleAppearsIn(title, t.evidence))
     .map((t) => t.label);
 }
 
@@ -126,9 +154,8 @@ function archetypesForLibraryTitle(
   title: string,
   profile: TasteProfile,
 ): string[] {
-  const needle = normalize(title);
   return profile.archetypes
-    .filter((a) => normalize(a.attraction).includes(needle))
+    .filter((a) => titleAppearsIn(title, a.attraction))
     .map((a) => a.label);
 }
 

@@ -52,8 +52,8 @@ export interface LibraryItem {
 }
 
 export type RecommendationStatus =
+  | "pending"
   | "saved"
-  | "skipped"
   | "rated"
   | "plan_to";
 

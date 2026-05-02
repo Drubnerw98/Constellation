@@ -38,8 +38,8 @@ function connectedTitlesFor(graph: Graph, nodeId: string): ConnectedTitle[] {
 
 const STATUS_LABEL: Record<GraphNode["status"], string> = {
   library: "in your library",
+  pending: "recommended for you",
   saved: "saved",
-  skipped: "skipped",
   rated: "rated",
   plan_to: "plan to",
 };

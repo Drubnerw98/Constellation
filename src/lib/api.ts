@@ -22,11 +22,14 @@ export class ApiError extends Error {
 
 const apiBase = import.meta.env.VITE_RESONANCE_API_URL ?? "";
 
-// Resonance's recommendation enum includes "pending" and "seen" (pre-
-// engagement, no signal) and "skipped" (active rejection — also no positive
-// signal for a constellation that maps what you're drawn to). Drop all
-// three; only the user-affirmed subset is renderable.
+// Constellation maps what you're drawn to. "pending" recs are the AI's
+// prediction of fit, generated from your profile — that IS taste signal,
+// even before you've engaged. "saved" / "rated" / "plan_to" are positive
+// engagement on top of that. We drop "skipped" (active rejection — no
+// positive signal) and "seen" (shown without action — neither here nor
+// there).
 const RENDERABLE_STATUSES = new Set([
+  "pending",
   "saved",
   "rated",
   "plan_to",

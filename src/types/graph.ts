@@ -2,7 +2,7 @@ import type { SimulationNodeDatum, SimulationLinkDatum } from "d3";
 
 export type MediaType = "movie" | "tv" | "anime" | "manga" | "game" | "book";
 
-export type NodeStatus = "library" | "saved" | "skipped" | "rated" | "plan_to";
+export type NodeStatus = "library" | "pending" | "saved" | "rated" | "plan_to";
 
 export interface GraphNode extends SimulationNodeDatum {
   id: string;
