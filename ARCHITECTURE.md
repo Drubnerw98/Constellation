@@ -33,7 +33,8 @@ constellation/
 │   │   ├── ConstellationView.tsx          # canvas + filters + panel orchestrator
 │   │   ├── constellation/
 │   │   │   ├── ConstellationCanvas.tsx    # D3 simulation + SVG render layers (~1k lines)
-│   │   │   └── DetailPanel.tsx            # slide-in detail surface for selected node
+│   │   │   ├── ClusterPanel.tsx           # slide-in (left) when galaxy mode is active
+│   │   │   └── DetailPanel.tsx            # slide-in (right) for selected node
 │   │   └── controls/
 │   │       ├── FilterBar.tsx              # format toggles
 │   │       └── SearchInput.tsx            # title search with pan-to-node
@@ -258,6 +259,10 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
 **Per-format glyphs:** circle (movie), rounded square (tv), hexagon (anime), diamond (game), portrait rect (manga), tall narrow rect (book). Sizes are tuned so each shape has roughly equal visual area — variation reads as identity, not size. Sized further by signal strength (rating for library, matchScore for recs) in a narrow 0.85-1.2× range.
 
 **Cluster labels: radial outward positioning.** Adjacent labels at the bottom of every cluster overlapped each other badly. Now each label is projected along the unit vector from canvas center → cluster, past the glow's outer edge, with `text-anchor` swinging start/middle/end based on horizontal position. Long labels wrap to 2 lines via `wrapClusterLabel`.
+
+**Galaxy mode + ClusterPanel:** when the user clicks a cluster label or zooms in past the focus threshold, the canvas enters "galaxy mode" — the focused cluster takes visual prominence, others dim. The canvas mirrors the focused-cluster state up via `onFocusedClusterChange`, and `ConstellationView` renders a `ClusterPanel` (slide-in from the left, mirror to the node `DetailPanel` on the right) showing the theme's AI-generated `evidence` text + member count. Closing the panel calls `clearClusterFocus()` on the canvas handle, which resets zoom + clears focus.
+
+**Why cluster-level rationale, not per-item:** the previous "Why this fits" surface in the node detail panel only had data for ~20% of items (consumed library + recs); rendering it inconsistently read as broken on the empty 80%. Theme `evidence` exists for every cluster, so cluster-level rationale is consistent. The per-item `explanation`/`fitNote` data still flows through the type chain — kept for a possible future hover/tooltip surface — but isn't currently displayed.
 
 ---
 

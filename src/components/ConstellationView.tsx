@@ -3,6 +3,7 @@ import {
   ConstellationCanvas,
   type ConstellationCanvasHandle,
 } from "./constellation/ConstellationCanvas";
+import { ClusterPanel } from "./constellation/ClusterPanel";
 import { DetailPanel } from "./constellation/DetailPanel";
 import { FilterBar } from "./controls/FilterBar";
 import { SearchInput } from "./controls/SearchInput";
@@ -52,9 +53,15 @@ export function ConstellationView({
   const [activeFormats, setActiveFormats] = useState<Set<MediaType>>(
     () => new Set(ALL_FORMATS),
   );
+  const [focusedClusterLabel, setFocusedClusterLabel] = useState<string | null>(
+    null,
+  );
 
   const selectedNode = selectedNodeId
     ? (graph.nodes.find((n) => n.id === selectedNodeId) ?? null)
+    : null;
+  const focusedCluster = focusedClusterLabel
+    ? (graph.clusters.find((c) => c.label === focusedClusterLabel) ?? null)
     : null;
 
   const toggleFormat = useCallback((format: MediaType) => {
@@ -83,12 +90,19 @@ export function ConstellationView({
         selectedNodeId={selectedNodeId}
         onSelect={setSelectedNodeId}
         activeFormats={activeFormats}
+        onFocusedClusterChange={setFocusedClusterLabel}
       />
       <SearchInput graph={graph} onPick={handleSearchPick} />
       <FilterBar
         activeFormats={activeFormats}
         onToggle={toggleFormat}
         onReset={resetFormats}
+      />
+      <ClusterPanel
+        cluster={focusedCluster}
+        profile={profile}
+        graph={graph}
+        onClose={() => canvasRef.current?.clearClusterFocus()}
       />
       <DetailPanel
         node={selectedNode}

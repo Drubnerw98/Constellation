@@ -19,10 +19,17 @@ interface Props {
   selectedNodeId: string | null;
   onSelect: (id: string | null) => void;
   activeFormats: Set<GraphNode["mediaType"]>;
+  /** Fired whenever galaxy-mode focus changes — when the user clicks a
+   * cluster label, zooms in past the threshold, or exits galaxy mode.
+   * View consumes this to render the cluster info panel. */
+  onFocusedClusterChange?: (label: string | null) => void;
 }
 
 export interface ConstellationCanvasHandle {
   panToNode: (id: string) => void;
+  /** Exit galaxy mode: clear focused cluster + reset zoom to identity.
+   * Called from the cluster info panel's close button. */
+  clearClusterFocus: () => void;
 }
 
 const CANVAS_W = 1200;
@@ -211,7 +218,7 @@ function nodeGlyph(
 
 export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
   function ConstellationCanvas(
-    { graph, selectedNodeId, onSelect, activeFormats },
+    { graph, selectedNodeId, onSelect, activeFormats, onFocusedClusterChange },
     ref,
   ) {
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -520,9 +527,16 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
           setFocusedClusterLabel(null);
           d3.select(svg).transition().duration(700).call(zoom.transform, next);
         },
+        clearClusterFocus: () => resetView(),
       }),
       [graph],
     );
+
+    // Mirror focused cluster state up to the parent so it can render the
+    // cluster info panel. Fires on every change including clears.
+    useEffect(() => {
+      onFocusedClusterChange?.(focusedClusterLabel);
+    }, [focusedClusterLabel, onFocusedClusterChange]);
 
     const flyToCluster = (label: string) => {
       const svg = svgRef.current;

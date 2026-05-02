@@ -118,17 +118,12 @@ export function DetailPanel({
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4 text-sm text-zinc-300">
-            {shown.explanation && (
-              <section className="mb-5">
-                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
-                  Why this fits
-                </h3>
-                <p className="text-xs leading-relaxed text-zinc-300">
-                  {shown.explanation}
-                </p>
-              </section>
-            )}
-
+            {/* Per-item AI rationale (rec.explanation / library.fitNote) is
+                deliberately not surfaced here. It only exists for ~20% of
+                items (consumed library + recs); rendering it inconsistently
+                read as broken. Cluster-level evidence (in the cluster panel
+                during galaxy mode) carries the "why" surface instead. The
+                data still flows through the type chain in case we revisit. */}
             {shown.themes.length > 0 && (
               <section className="mb-5">
                 <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
