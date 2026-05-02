@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { UserButton } from "@clerk/clerk-react";
 import { ConstellationView } from "../components/ConstellationView";
+import { SiteMark } from "../components/SiteMark";
 import {
   sampleProfile,
   sampleLibrary,
@@ -93,7 +94,8 @@ export function Home() {
         recommendations={data.recommendations}
         favorites={data.favorites}
       />
-      <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-2">
+      <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-3">
+        <SiteMark />
         <div className="pointer-events-auto rounded-full border border-white/10 bg-[#0b0f1a]/85 p-1 backdrop-blur-md">
           <UserButton
             appearance={{

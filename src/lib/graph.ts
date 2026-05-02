@@ -10,7 +10,12 @@ import { colorForThemeIndex } from "./colors";
 const CANVAS_W = 1200;
 const CANVAS_H = 800;
 const MIN_EDGE_STRENGTH = 0.4;
-const MAX_EDGES_PER_NODE = 4;
+// Tightened from 4 to 3 after min-normalization made many strength-1.0
+// connections survive (single-tag favorites connecting to multiple
+// well-tagged partners). At 4 the canvas read as a yarn-ball web; at 3
+// the strongest connections still come through but the page reads as
+// a constellation rather than a network diagram.
+const MAX_EDGES_PER_NODE = 3;
 
 function normalize(title: string): string {
   return title

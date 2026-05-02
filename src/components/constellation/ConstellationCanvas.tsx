@@ -63,7 +63,15 @@ const STAR_FILLS = [
   "#cbd6f5", // cool
 ];
 
-function seededStars(count: number, anchorCount: number): Star[] {
+// Three layers for depth: distant tiny stars (densest, dimmest),
+// midfield, and a sprinkle of brighter "anchor" stars. Multiple layers
+// at different sizes give the page a parallax/dimensional feel rather
+// than a single uniform scatter.
+function seededStars(
+  distantCount: number,
+  midCount: number,
+  anchorCount: number,
+): Star[] {
   const out: Star[] = [];
   let seed = 1337;
   const rand = () => {
@@ -72,15 +80,27 @@ function seededStars(count: number, anchorCount: number): Star[] {
   };
   const pickFill = () =>
     STAR_FILLS[Math.floor(rand() * STAR_FILLS.length)] ?? "#e9ecf2";
-  for (let i = 0; i < count; i++) {
+  // Distant layer: tiny, low opacity, dense
+  for (let i = 0; i < distantCount; i++) {
     out.push({
       x: rand() * CANVAS_W,
       y: rand() * CANVAS_H,
-      r: 0.4 + rand() * 1.0,
-      o: 0.18 + rand() * 0.45,
+      r: 0.3 + rand() * 0.5,
+      o: 0.12 + rand() * 0.2,
       fill: pickFill(),
     });
   }
+  // Midfield: moderate size + opacity (the previous default layer)
+  for (let i = 0; i < midCount; i++) {
+    out.push({
+      x: rand() * CANVAS_W,
+      y: rand() * CANVAS_H,
+      r: 0.5 + rand() * 0.9,
+      o: 0.22 + rand() * 0.4,
+      fill: pickFill(),
+    });
+  }
+  // Anchor stars: bright, varied, sparse
   for (let i = 0; i < anchorCount; i++) {
     out.push({
       x: rand() * CANVAS_W,
@@ -253,7 +273,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }, []);
 
-    const stars = useMemo(() => seededStars(110, 14), []);
+    const stars = useMemo(() => seededStars(180, 90, 18), []);
 
     // Staggered fade-in on first load: stars come up first as a backdrop, then
     // each title star twinkles in. Skipped under prefers-reduced-motion so
@@ -330,7 +350,13 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
             .forceLink<GraphNode, GraphEdge>(edges)
             .id((d) => d.id)
             .distance((d) => 140 + (1 - d.strength) * 160)
-            .strength((d) => 0.015 + d.strength * 0.05),
+            // Weak link force: present so connected nodes drift slightly
+            // toward each other but doesn't override the cluster pull.
+            // Reduced from 0.015+s*0.05 because min-normalized edges create
+            // many strength-1.0 connections that were biasing single-tag
+            // favorites toward their connected partners and off-center
+            // within their primary cluster.
+            .strength((d) => 0.005 + d.strength * 0.02),
         )
         .force("charge", d3.forceManyBody<GraphNode>().strength(-420))
         .force(
@@ -340,8 +366,11 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
             .radius(NODE_RADIUS + 8)
             .strength(0.95),
         )
-        .force("x", d3.forceX<GraphNode>((d) => targetFor(d).x).strength(0.4))
-        .force("y", d3.forceY<GraphNode>((d) => targetFor(d).y).strength(0.4))
+        // Bumped from 0.4 to 0.55. Stronger pull to primary cluster center
+        // so nodes stay visibly inside their glow instead of drifting toward
+        // edge-connected partners in other clusters.
+        .force("x", d3.forceX<GraphNode>((d) => targetFor(d).x).strength(0.55))
+        .force("y", d3.forceY<GraphNode>((d) => targetFor(d).y).strength(0.55))
         .alpha(1)
         .alphaDecay(prefersReducedMotion ? 0.05 : 0.02)
         // alphaTarget keeps the simulation ticking gently forever (drift-on-
@@ -613,9 +642,62 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          {/* Soft nebula gradients — cosmos depth without noise. Three
+              large, low-opacity blobs in cool/warm tints anchored in the
+              dead-space corners between cluster glows. Drawn underneath
+              the starfield so stars sit on top. */}
+          <radialGradient id="nebula-deep-blue" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#3b4a8a" stopOpacity={0.18} />
+            <stop offset="50%" stopColor="#3b4a8a" stopOpacity={0.06} />
+            <stop offset="100%" stopColor="#3b4a8a" stopOpacity={0} />
+          </radialGradient>
+          <radialGradient id="nebula-purple" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#6b3a8a" stopOpacity={0.14} />
+            <stop offset="50%" stopColor="#6b3a8a" stopOpacity={0.05} />
+            <stop offset="100%" stopColor="#6b3a8a" stopOpacity={0} />
+          </radialGradient>
+          <radialGradient id="nebula-warm" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#8a5a3b" stopOpacity={0.1} />
+            <stop offset="50%" stopColor="#8a5a3b" stopOpacity={0.04} />
+            <stop offset="100%" stopColor="#8a5a3b" stopOpacity={0} />
+          </radialGradient>
         </defs>
 
         <g className="zoom-layer" transform={transform.toString()}>
+          {/* Nebula layer — drawn first so stars + clusters sit on top.
+              Three big soft blobs in opposing corners give the canvas
+              cosmic depth without competing with the constellation. */}
+          <g
+            className="nebula"
+            opacity={starfieldLit ? 1 : 0}
+            style={{
+              transition: prefersReducedMotion
+                ? "none"
+                : "opacity 1800ms ease-out",
+            }}
+          >
+            <ellipse
+              cx={CANVAS_W * 0.18}
+              cy={CANVAS_H * 0.22}
+              rx={CANVAS_W * 0.42}
+              ry={CANVAS_H * 0.5}
+              fill="url(#nebula-deep-blue)"
+            />
+            <ellipse
+              cx={CANVAS_W * 0.85}
+              cy={CANVAS_H * 0.78}
+              rx={CANVAS_W * 0.38}
+              ry={CANVAS_H * 0.45}
+              fill="url(#nebula-purple)"
+            />
+            <ellipse
+              cx={CANVAS_W * 0.75}
+              cy={CANVAS_H * 0.18}
+              rx={CANVAS_W * 0.32}
+              ry={CANVAS_H * 0.4}
+              fill="url(#nebula-warm)"
+            />
+          </g>
           <g
             className="starfield"
             opacity={starfieldLit ? 1 : 0}
