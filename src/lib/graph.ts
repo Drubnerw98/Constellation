@@ -20,6 +20,45 @@ function normalize(title: string): string {
   return title.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Minimum length on the shorter side of a substring match. Stops trivial
+// matches like tag "a" inside theme label "abandonment" — the AI sometimes
+// emits very short tags and we'd otherwise cluster everything under one
+// theme.
+const FUZZY_MIN_LEN = 4;
+
+/**
+ * Reconcile an AI-generated tag against a set of canonical labels.
+ *
+ * The AI is *instructed* to emit theme/archetype labels verbatim, but in
+ * practice it paraphrases or shortens ("meaning-making" for "found meaning
+ * over inherited meaning"). Strict exact-match drops those, leaving nodes
+ * unanchored and piled at the canvas center.
+ *
+ * Returns the canonical label string when a match is found, so downstream
+ * code (cluster member lookups, edge sharing) continues to compare against
+ * the canonical label set.
+ */
+function matchLabel(tag: string, labels: Set<string>): string | null {
+  const norm = normalize(tag);
+  for (const label of labels) {
+    const labelNorm = normalize(label);
+    if (norm === labelNorm) return label;
+    const shorter = Math.min(norm.length, labelNorm.length);
+    if (shorter < FUZZY_MIN_LEN) continue;
+    if (labelNorm.includes(norm) || norm.includes(labelNorm)) return label;
+  }
+  return null;
+}
+
+function matchLabelsFromTags(tags: string[], labels: Set<string>): string[] {
+  const matched = new Set<string>();
+  for (const tag of tags) {
+    const m = matchLabel(tag, labels);
+    if (m) matched.add(m);
+  }
+  return Array.from(matched);
+}
+
 function themesForLibraryTitle(title: string, profile: TasteProfile): string[] {
   const needle = normalize(title);
   return profile.themes
@@ -49,10 +88,10 @@ export function buildGraph(
   for (const item of library) {
     const tagged = item.tasteTags ?? [];
     const themes = tagged.length
-      ? tagged.filter((t) => themeLabels.has(t))
+      ? matchLabelsFromTags(tagged, themeLabels)
       : themesForLibraryTitle(item.title, profile);
     const archetypes = tagged.length
-      ? tagged.filter((t) => archetypeLabels.has(t))
+      ? matchLabelsFromTags(tagged, archetypeLabels)
       : archetypesForLibraryTitle(item.title, profile);
     nodesByTitle.set(normalize(item.title), {
       id: item.id,
@@ -71,8 +110,8 @@ export function buildGraph(
   for (const rec of recommendations) {
     const key = normalize(rec.title);
     if (nodesByTitle.has(key)) continue;
-    const themes = rec.tasteTags.filter((t) => themeLabels.has(t));
-    const archetypes = rec.tasteTags.filter((t) => archetypeLabels.has(t));
+    const themes = matchLabelsFromTags(rec.tasteTags, themeLabels);
+    const archetypes = matchLabelsFromTags(rec.tasteTags, archetypeLabels);
     nodesByTitle.set(key, {
       id: rec.id,
       title: rec.title,
@@ -87,7 +126,13 @@ export function buildGraph(
     });
   }
 
-  const nodes = Array.from(nodesByTitle.values());
+  // Drop nodes with no theme AND no archetype anchor. An unanchored node
+  // has nothing pulling it toward a cluster center, so it falls to (and
+  // piles up at) the canvas-center fallback in the simulation. Visually
+  // it's noise — a star with no narrative connection to the constellation.
+  const nodes = Array.from(nodesByTitle.values()).filter(
+    (n) => n.themes.length > 0 || n.archetypes.length > 0,
+  );
 
   const candidates: GraphEdge[] = [];
   for (let i = 0; i < nodes.length; i++) {
