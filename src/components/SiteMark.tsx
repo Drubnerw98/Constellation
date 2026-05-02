@@ -8,7 +8,9 @@ export function SiteMark() {
   return (
     <div className="pointer-events-none flex items-center gap-2.5 px-2">
       <Asterism size={22} />
-      <span className="font-mono text-[10px] tracking-[0.22em] text-zinc-400 uppercase">
+      {/* Wordmark hides on narrow viewports so the corner doesn't crowd
+          the auth button. The glyph alone carries identity at that size. */}
+      <span className="hidden font-mono text-[10px] tracking-[0.22em] text-zinc-400 uppercase sm:inline">
         Constellation
       </span>
     </div>

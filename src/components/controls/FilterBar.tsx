@@ -40,7 +40,7 @@ export function FilterBar({
 }: Props) {
   const allActive = FORMATS.every((f) => activeFormats.has(f.id));
   return (
-    <div className="pointer-events-none absolute top-4 left-1/2 z-10 flex -translate-x-1/2 items-stretch gap-2.5 text-[12px]">
+    <div className="pointer-events-none absolute top-3 right-3 left-3 z-10 flex flex-col items-stretch gap-2 text-[12px] md:top-4 md:right-auto md:left-1/2 md:flex-row md:items-stretch md:gap-2.5 md:-translate-x-1/2">
       <Group caption="Media">
         {FORMATS.map((f) => {
           const active = activeFormats.has(f.id);
@@ -49,10 +49,8 @@ export function FilterBar({
               key={f.id}
               type="button"
               onClick={() => onToggle(f.id)}
-              className={`pointer-events-auto cursor-pointer rounded-sm px-2.5 py-1 tracking-wide transition-colors ${
-                active
-                  ? "text-zinc-100"
-                  : "text-zinc-600 hover:text-zinc-300"
+              className={`pointer-events-auto flex-1 cursor-pointer rounded-sm px-2 py-1 tracking-wide whitespace-nowrap transition-colors md:flex-initial md:px-2.5 ${
+                active ? "text-zinc-100" : "text-zinc-600 hover:text-zinc-300"
               }`}
               aria-pressed={active}
             >
@@ -73,7 +71,7 @@ export function FilterBar({
 
       <Group caption="View">
         <Toggle
-          label="scale by"
+          label="scale"
           value={clusterScaleMode === "weight" ? "weight" : "titles"}
           onClick={() =>
             onClusterScaleModeChange(
@@ -84,7 +82,7 @@ export function FilterBar({
         />
         <span aria-hidden className="self-stretch border-l border-white/10" />
         <Toggle
-          label="connections"
+          label="edges"
           value={showAllConnections ? "all" : "selected"}
           onClick={() => onShowAllConnectionsChange(!showAllConnections)}
           title="Show all connections vs. only the connections of the selected title"

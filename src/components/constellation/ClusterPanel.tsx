@@ -27,15 +27,22 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
     ? profile.themes.find((t) => t.label === shown.label)
     : null;
 
+  // Mobile: bottom sheet. md+: slide from left. ClusterPanel sits at
+  // z-10; DetailPanel at z-20 so on mobile, opening a node detail
+  // covers the cluster sheet (most-recent-action wins).
+  const transformClasses = isOpen
+    ? "translate-y-0 md:translate-x-0"
+    : "translate-y-full md:translate-y-0 md:-translate-x-full";
+
   return (
     <aside
-      className="pointer-events-auto absolute top-0 left-0 z-10 flex h-full w-[420px] flex-col bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out"
+      className={`pointer-events-auto absolute right-0 bottom-0 left-0 z-10 flex max-h-[82vh] flex-col rounded-t-xl bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out md:top-0 md:bottom-auto md:right-auto md:h-full md:max-h-none md:w-[420px] md:rounded-none ${transformClasses}`}
       style={{
-        transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+        borderTop: "1px solid rgb(255 255 255 / 0.08)",
         borderRight: "1px solid rgb(255 255 255 / 0.08)",
         boxShadow: shown
-          ? `inset -2px 0 0 0 ${shown.color}`
-          : "inset -2px 0 0 0 transparent",
+          ? `inset 0 2px 0 0 ${shown.color}, inset -2px 0 0 0 ${shown.color}`
+          : "inset 0 2px 0 0 transparent",
       }}
       aria-hidden={!isOpen}
     >

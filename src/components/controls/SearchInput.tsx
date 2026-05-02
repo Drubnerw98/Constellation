@@ -21,7 +21,10 @@ export function SearchInput({ graph, onPick }: Props) {
   const open = focused && query.trim().length > 0;
 
   return (
-    <div className="absolute top-4 left-4 z-10 w-[280px]">
+    // Hidden on mobile — the FilterBar already takes the top of the
+    // screen there, and search is a power-user feature. Comes back at
+    // md+ where there's horizontal room.
+    <div className="absolute top-4 left-4 z-10 hidden w-[280px] md:block">
       <div className="relative">
         <svg
           className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-500"

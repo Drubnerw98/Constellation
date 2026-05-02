@@ -76,15 +76,23 @@ export function DetailPanel({
 
   const connected = shown ? connectedTitlesFor(graph, shown.id) : [];
 
+  // Mobile: bottom sheet (slide up from bottom). md+: side sheet from
+  // right. Tailwind transform utilities, not inline style, so the
+  // responsive override at md works.
+  const transformClasses = isOpen
+    ? "translate-y-0 md:translate-x-0"
+    : "translate-y-full md:translate-y-0 md:translate-x-full";
+
   return (
     <aside
-      className="pointer-events-auto absolute top-0 right-0 z-10 flex h-full w-[420px] flex-col bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out"
+      className={`pointer-events-auto absolute right-0 bottom-0 left-0 z-20 flex max-h-[82vh] flex-col rounded-t-xl bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out md:top-0 md:bottom-auto md:left-auto md:h-full md:max-h-none md:w-[420px] md:rounded-none ${transformClasses}`}
       style={{
-        transform: isOpen ? "translateX(0)" : "translateX(100%)",
+        borderTop: "1px solid rgb(255 255 255 / 0.08)",
         borderLeft: "1px solid rgb(255 255 255 / 0.08)",
-        // Subtle accent stripe in the clicked node's primary theme color —
-        // visual continuity between canvas and panel.
-        boxShadow: `inset 2px 0 0 0 ${accentColor}`,
+        // Accent stripe in the clicked node's primary theme color —
+        // visual continuity between canvas and panel. Top edge on mobile,
+        // left edge on desktop.
+        boxShadow: `inset 0 2px 0 0 ${accentColor}, inset 2px 0 0 0 ${accentColor}`,
       }}
       aria-hidden={!isOpen}
     >
