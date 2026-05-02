@@ -40,13 +40,19 @@ export function useResonanceProfile(): ProfileStatus {
         if (!cancelled) setStatus({ state: "ready", data });
       } catch (err) {
         if (cancelled) return;
-        if (err instanceof ApiError && err.status === 404) {
-          setStatus({ state: "no-profile" });
+        if (err instanceof ApiError) {
+          if (err.status === 404) {
+            setStatus({ state: "no-profile" });
+            return;
+          }
+          setStatus({ state: "error", message: err.message });
           return;
         }
-        const message =
-          err instanceof Error ? err.message : "Unable to reach Resonance";
-        setStatus({ state: "error", message });
+        // fetch throws TypeError on network failure / CORS / DNS — the raw
+        // message is browser-vendor specific ("NetworkError when attempting
+        // to fetch resource." in Firefox, "Failed to fetch" in Chrome).
+        // Normalize to one banner-friendly string.
+        setStatus({ state: "error", message: "Resonance is unreachable" });
       }
     })();
 
