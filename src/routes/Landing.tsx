@@ -128,37 +128,32 @@ function Backdrop() {
   );
 }
 
-/** Decorative constellation in the right column — a slow-rotating asterism
- * with theme-tinted glows. Echoes the in-canvas glyph language so the
- * landing page reads as a preview of what you'd see signed-in. */
+/** Hero glyph — scaled-up version of the same 5-star asterism used in
+ * the favicon + SiteMark, with halos + the cross-flare on the anchor
+ * star explicit at this size. Brand identity is consistent across
+ * tab → corner → hero. */
 function HeroGlyph() {
-  // Coordinates roughly form a sky-chart asterism. Connected by thin lines
-  // at low opacity, with each point a circle + halo.
-  const points: { x: number; y: number; r: number; tint: string }[] = [
-    { x: 30, y: 40, r: 3.5, tint: "#fef3c7" },
-    { x: 90, y: 90, r: 5, tint: "#fef3c7" },
-    { x: 150, y: 60, r: 4, tint: "#fde6c8" },
-    { x: 210, y: 130, r: 4.5, tint: "#fef3c7" },
-    { x: 80, y: 180, r: 3.5, tint: "#cbd6f5" },
-    { x: 170, y: 220, r: 5, tint: "#fef3c7" },
-    { x: 240, y: 200, r: 3.5, tint: "#d4def8" },
-    { x: 130, y: 260, r: 3.5, tint: "#fde6c8" },
+  // Same canonical layout as the favicon (32×32 viewBox), scaled into
+  // a 320×320 hero canvas. Points 0–4 trace the W. Anchor (point 2) is
+  // the brightest with a visible cross-flare and a wider halo.
+  const points: { x: number; y: number; r: number; halo: number }[] = [
+    { x: 40, y: 220, r: 4, halo: 0.5 },
+    { x: 100, y: 90, r: 6, halo: 0.7 },
+    { x: 160, y: 180, r: 9, halo: 1.0 },
+    { x: 220, y: 80, r: 6, halo: 0.7 },
+    { x: 280, y: 210, r: 4, halo: 0.5 },
   ];
   const lines: [number, number][] = [
     [0, 1],
     [1, 2],
-    [1, 4],
     [2, 3],
-    [3, 6],
-    [4, 5],
-    [5, 6],
-    [4, 7],
-    [5, 7],
+    [3, 4],
   ];
+  const anchor = points[2]!;
   return (
     <div className="relative hidden aspect-square w-full max-w-md self-center lg:block">
       <svg
-        viewBox="0 0 280 300"
+        viewBox="0 0 320 320"
         className="h-full w-full"
         aria-hidden
       >
@@ -168,7 +163,20 @@ function HeroGlyph() {
             <stop offset="60%" stopColor="#fef3c7" stopOpacity={0.08} />
             <stop offset="100%" stopColor="#fef3c7" stopOpacity={0} />
           </radialGradient>
+          <radialGradient id="hero-anchor-halo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fef3c7" stopOpacity={0.7} />
+            <stop offset="50%" stopColor="#fef3c7" stopOpacity={0.12} />
+            <stop offset="100%" stopColor="#fef3c7" stopOpacity={0} />
+          </radialGradient>
         </defs>
+        {/* Anchor halo (drawn first, behind everything) */}
+        <circle
+          cx={anchor.x}
+          cy={anchor.y}
+          r={70}
+          fill="url(#hero-anchor-halo)"
+        />
+        {/* Connecting lines */}
         {lines.map(([a, b], i) => {
           const pa = points[a]!;
           const pb = points[b]!;
@@ -180,15 +188,44 @@ function HeroGlyph() {
               x2={pb.x}
               y2={pb.y}
               stroke="#fef3c7"
-              strokeOpacity={0.25}
-              strokeWidth={0.6}
+              strokeOpacity={0.32}
+              strokeWidth={1}
+              strokeLinecap="round"
             />
           );
         })}
+        {/* Anchor cross-flare — visible at hero size */}
+        <line
+          x1={anchor.x - 60}
+          y1={anchor.y}
+          x2={anchor.x + 60}
+          y2={anchor.y}
+          stroke="#fef3c7"
+          strokeOpacity={0.4}
+          strokeWidth={0.6}
+          strokeLinecap="round"
+        />
+        <line
+          x1={anchor.x}
+          y1={anchor.y - 50}
+          x2={anchor.x}
+          y2={anchor.y + 50}
+          stroke="#fef3c7"
+          strokeOpacity={0.4}
+          strokeWidth={0.6}
+          strokeLinecap="round"
+        />
+        {/* Star halos + bodies */}
         {points.map((p, i) => (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r={p.r * 4} fill="url(#hero-halo)" />
-            <circle cx={p.x} cy={p.y} r={p.r} fill={p.tint} />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r={p.r * 5}
+              fill="url(#hero-halo)"
+              opacity={p.halo}
+            />
+            <circle cx={p.x} cy={p.y} r={p.r} fill="#fef3c7" />
           </g>
         ))}
       </svg>
