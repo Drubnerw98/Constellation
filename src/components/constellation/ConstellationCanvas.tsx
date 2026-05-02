@@ -66,6 +66,33 @@ function primaryClusterFor(
 }
 
 /**
+ * Split a long cluster label into at most two lines, breaking at the word
+ * boundary closest to the midpoint character count. Single-word or short
+ * labels stay one line.
+ */
+function wrapClusterLabel(label: string): string[] {
+  if (label.length <= 22) return [label];
+  const words = label.split(" ");
+  if (words.length <= 1) return [label];
+  const mid = label.length / 2;
+  let bestIdx = 1;
+  let bestDist = Infinity;
+  let cum = 0;
+  for (let i = 0; i < words.length - 1; i++) {
+    cum += words[i]!.length + 1;
+    const d = Math.abs(cum - mid);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i + 1;
+    }
+  }
+  return [
+    words.slice(0, bestIdx).join(" "),
+    words.slice(bestIdx).join(" "),
+  ];
+}
+
+/**
  * Subtle visual hierarchy: scale node size by quality signal. Highly-rated
  * library items and high-matchScore recs sit slightly larger than the
  * baseline; unrated/low-score ones slightly smaller. Range is intentionally
@@ -666,14 +693,37 @@ export const ConstellationCanvas = forwardRef<
 
       <g className="cluster-labels">
         {clusters.map((c) => {
-          const belowY = c.centerY + c.radius + 18;
-          const aboveY = c.centerY - c.radius - 8;
-          const labelY = belowY > CANVAS_H - 8 ? aboveY : belowY;
+          const lines = wrapClusterLabel(c.label);
+          const lineHeight = 14;
+          // Position labels radially outward from canvas center — past the
+          // glow, anchored away from the middle. Cluster centers lie on a
+          // ring around (CANVAS_W/2, CANVAS_H/2), so the unit vector from
+          // center → cluster is also the direction to push the label.
+          const dx = c.centerX - CANVAS_W / 2;
+          const dy = c.centerY - CANVAS_H / 2;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const labelDist = dist + c.radius + 14;
+          const margin = 16;
+          let labelX = CANVAS_W / 2 + ux * labelDist;
+          let labelY = CANVAS_H / 2 + uy * labelDist;
+          // Clamp to canvas — corner clusters may radially push off-canvas;
+          // the stroke-bg paintOrder keeps the label readable even when it
+          // ends up over a glow.
+          const halfBlock = ((lines.length - 1) * lineHeight) / 2;
+          if (labelY - halfBlock < margin) labelY = margin + halfBlock;
+          if (labelY + halfBlock > CANVAS_H - margin)
+            labelY = CANVAS_H - margin - halfBlock;
+          if (labelX < margin + 80) labelX = margin + 80;
+          if (labelX > CANVAS_W - margin - 80) labelX = CANVAS_W - margin - 80;
+          // Anchor: text grows away from canvas center horizontally.
+          const textAnchor =
+            ux > 0.4 ? "start" : ux < -0.4 ? "end" : "middle";
           const isFocused = c.label === focusedClusterLabel;
           const isHovered =
             !inGalaxyMode && c.label === hoveredClusterLabel;
-          const dim =
-            focusedClusterLabel !== null && !isFocused;
+          const dim = focusedClusterLabel !== null && !isFocused;
           const opacity = isFocused
             ? 0.95
             : isHovered
@@ -684,9 +734,10 @@ export const ConstellationCanvas = forwardRef<
           return (
             <text
               key={c.label}
-              x={c.centerX}
+              x={labelX}
               y={labelY}
-              textAnchor="middle"
+              textAnchor={textAnchor}
+              dominantBaseline="middle"
               fill={c.color}
               opacity={opacity}
               fontSize={isFocused || isHovered ? 13 : 11}
@@ -702,7 +753,15 @@ export const ConstellationCanvas = forwardRef<
                   : "opacity 220ms ease, font-size 220ms ease",
               }}
             >
-              {c.label}
+              {lines.map((line, i) => (
+                <tspan
+                  key={i}
+                  x={labelX}
+                  dy={i === 0 ? -halfBlock : lineHeight}
+                >
+                  {line}
+                </tspan>
+              ))}
             </text>
           );
         })}
