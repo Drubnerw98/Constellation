@@ -51,11 +51,7 @@ export interface LibraryItem {
   tasteTags?: string[];
 }
 
-export type RecommendationStatus =
-  | "pending"
-  | "saved"
-  | "rated"
-  | "plan_to";
+export type RecommendationStatus = "pending" | "saved" | "rated" | "plan_to";
 
 export interface RecommendationItem {
   id: string;

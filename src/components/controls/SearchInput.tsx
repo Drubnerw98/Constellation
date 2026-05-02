@@ -21,7 +21,7 @@ export function SearchInput({ graph, onPick }: Props) {
   const open = focused && query.trim().length > 0;
 
   return (
-    <div className="absolute left-4 top-4 z-10 w-[260px]">
+    <div className="absolute top-4 left-4 z-10 w-[260px]">
       <input
         type="text"
         value={query}
@@ -57,7 +57,7 @@ export function SearchInput({ graph, onPick }: Props) {
         </ul>
       )}
       {open && matches.length === 0 && (
-        <div className="mt-1 rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-2 text-xs italic text-zinc-500 backdrop-blur-md">
+        <div className="mt-1 rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-2 text-xs text-zinc-500 italic backdrop-blur-md">
           No matches
         </div>
       )}

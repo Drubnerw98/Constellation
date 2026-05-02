@@ -86,7 +86,7 @@ export function Home() {
         library={data.library}
         recommendations={data.recommendations}
       />
-      <div className="pointer-events-none absolute right-4 top-4 z-10 flex items-center gap-2">
+      <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-2">
         <div className="pointer-events-auto rounded-full border border-white/10 bg-[#0b0f1a]/85 p-1 backdrop-blur-md">
           <UserButton
             appearance={{

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Graph, GraphNode } from "../../types/graph";
 
 interface Props {
@@ -48,10 +48,14 @@ export function DetailPanel({
   onClose,
   onSelectConnected,
 }: Props) {
+  // Keep the last non-null node so the panel can finish its slide-out
+  // animation after `node` flips to null. Derived during render rather than
+  // mirrored via useEffect — guard ensures setState only fires on actual
+  // change.
   const [displayNode, setDisplayNode] = useState<GraphNode | null>(node);
-  useEffect(() => {
-    if (node) setDisplayNode(node);
-  }, [node]);
+  if (node !== null && node.id !== displayNode?.id) {
+    setDisplayNode(node);
+  }
 
   const isOpen = node !== null;
   const shown = displayNode;
@@ -63,7 +67,7 @@ export function DetailPanel({
 
   return (
     <aside
-      className="pointer-events-auto absolute right-0 top-0 z-10 flex h-full w-[400px] flex-col border-l border-white/10 bg-[#0a0d18]/95 backdrop-blur-md transition-transform duration-300 ease-out"
+      className="pointer-events-auto absolute top-0 right-0 z-10 flex h-full w-[400px] flex-col border-l border-white/10 bg-[#0a0d18]/95 backdrop-blur-md transition-transform duration-300 ease-out"
       style={{ transform: isOpen ? "translateX(0)" : "translateX(100%)" }}
       aria-hidden={!isOpen}
     >
@@ -71,12 +75,12 @@ export function DetailPanel({
         <>
           <div className="flex items-start justify-between gap-3 border-b border-white/5 px-5 py-4">
             <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">
+              <div className="text-[10px] tracking-wider text-zinc-500 uppercase">
                 {shown.source === "library"
                   ? "from your library"
                   : "recommendation"}
               </div>
-              <h2 className="mt-0.5 text-lg font-medium leading-tight text-white">
+              <h2 className="mt-0.5 text-lg leading-tight font-medium text-white">
                 {shown.title}
               </h2>
               <div className="mt-1 text-xs text-zinc-400">
@@ -94,7 +98,7 @@ export function DetailPanel({
             <button
               type="button"
               onClick={onClose}
-              className="-mr-1 -mt-1 rounded p-1 text-zinc-500 hover:bg-white/5 hover:text-zinc-200"
+              className="-mt-1 -mr-1 rounded p-1 text-zinc-500 hover:bg-white/5 hover:text-zinc-200"
               aria-label="Close"
             >
               <svg
@@ -114,7 +118,7 @@ export function DetailPanel({
           <div className="flex-1 overflow-y-auto px-5 py-4 text-sm text-zinc-300">
             {shown.explanation && (
               <section className="mb-5">
-                <h3 className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
                   Why this fits
                 </h3>
                 <p className="text-xs leading-relaxed text-zinc-300">
@@ -125,7 +129,7 @@ export function DetailPanel({
 
             {shown.themes.length > 0 && (
               <section className="mb-5">
-                <h3 className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
                   Themes
                 </h3>
                 <ul className="space-y-1.5">
@@ -148,7 +152,7 @@ export function DetailPanel({
 
             {shown.archetypes.length > 0 && (
               <section className="mb-5">
-                <h3 className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
                   Archetypes
                 </h3>
                 <ul className="space-y-1.5">
@@ -166,39 +170,41 @@ export function DetailPanel({
 
             {connected.length > 0 && (
               <section className="mb-5">
-                <h3 className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
                   Connected titles
                 </h3>
                 <ul className="space-y-1.5">
-                  {connected.map(({ node: n, sharedThemes, sharedArchetypes }) => (
-                    <li key={n.id}>
-                      <button
-                        type="button"
-                        onClick={() => onSelectConnected(n.id)}
-                        className="w-full rounded px-2 py-1.5 text-left transition-colors hover:bg-white/5"
-                      >
-                        <div className="flex items-baseline justify-between gap-2">
-                          <div className="font-medium text-zinc-200">
-                            {n.title}
+                  {connected.map(
+                    ({ node: n, sharedThemes, sharedArchetypes }) => (
+                      <li key={n.id}>
+                        <button
+                          type="button"
+                          onClick={() => onSelectConnected(n.id)}
+                          className="w-full rounded px-2 py-1.5 text-left transition-colors hover:bg-white/5"
+                        >
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div className="font-medium text-zinc-200">
+                              {n.title}
+                            </div>
+                            <div className="shrink-0 text-[10px] text-zinc-500">
+                              {n.mediaType}
+                              {n.year ? ` · ${n.year}` : ""}
+                            </div>
                           </div>
-                          <div className="shrink-0 text-[10px] text-zinc-500">
-                            {n.mediaType}
-                            {n.year ? ` · ${n.year}` : ""}
+                          <div className="mt-0.5 text-[11px] text-zinc-500">
+                            shares{" "}
+                            {[...sharedThemes, ...sharedArchetypes].join(" · ")}
                           </div>
-                        </div>
-                        <div className="mt-0.5 text-[11px] text-zinc-500">
-                          shares{" "}
-                          {[...sharedThemes, ...sharedArchetypes].join(" · ")}
-                        </div>
-                      </button>
-                    </li>
-                  ))}
+                        </button>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </section>
             )}
 
             {connected.length === 0 && (
-              <div className="text-xs italic text-zinc-500">
+              <div className="text-xs text-zinc-500 italic">
                 No strong connections to other titles in this constellation.
               </div>
             )}

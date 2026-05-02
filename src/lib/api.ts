@@ -28,12 +28,7 @@ const apiBase = import.meta.env.VITE_RESONANCE_API_URL ?? "";
 // engagement on top of that. We drop "skipped" (active rejection — no
 // positive signal) and "seen" (shown without action — neither here nor
 // there).
-const RENDERABLE_STATUSES = new Set([
-  "pending",
-  "saved",
-  "rated",
-  "plan_to",
-]);
+const RENDERABLE_STATUSES = new Set(["pending", "saved", "rated", "plan_to"]);
 
 interface RawRecommendation {
   id: string;

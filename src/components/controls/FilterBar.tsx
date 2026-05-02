@@ -18,7 +18,7 @@ interface Props {
 export function FilterBar({ activeFormats, onToggle, onReset }: Props) {
   const allActive = FORMATS.every((f) => activeFormats.has(f.id));
   return (
-    <div className="pointer-events-none absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-[#0b0f1a]/85 px-1.5 py-1 text-xs backdrop-blur-md">
+    <div className="pointer-events-none absolute top-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-[#0b0f1a]/85 px-1.5 py-1 text-xs backdrop-blur-md">
       {FORMATS.map((f) => {
         const active = activeFormats.has(f.id);
         return (

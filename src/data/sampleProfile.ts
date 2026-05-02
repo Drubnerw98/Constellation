@@ -176,10 +176,7 @@ export const sampleLibrary: LibraryItem[] = [
     year: 1989,
     rating: 5,
     source: "library",
-    tasteTags: [
-      "violence with moral residue",
-      "burden-carrying protagonist",
-    ],
+    tasteTags: ["violence with moral residue", "burden-carrying protagonist"],
   },
   {
     id: "lib-bojack",

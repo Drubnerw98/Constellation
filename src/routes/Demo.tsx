@@ -25,7 +25,7 @@ export function Demo() {
         library={sampleLibrary}
         recommendations={sampleRecommendations}
       />
-      <div className="pointer-events-none absolute right-4 top-4 z-10 flex items-center gap-2">
+      <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-2">
         <Link
           to="/"
           className="pointer-events-auto rounded-full border border-white/10 bg-[#0b0f1a]/85 px-4 py-1.5 text-xs text-zinc-200 backdrop-blur-md transition-colors hover:bg-white/10"

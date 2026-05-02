@@ -35,10 +35,10 @@ export function Landing() {
         }}
       />
       <div className="relative mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center px-8 py-16">
-        <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+        <p className="text-xs tracking-[0.22em] text-zinc-500 uppercase">
           Constellation
         </p>
-        <h1 className="mt-3 text-5xl font-light leading-tight text-zinc-100 sm:text-6xl">
+        <h1 className="mt-3 text-5xl leading-tight font-light text-zinc-100 sm:text-6xl">
           Your taste,
           <br />
           <span className="text-zinc-400">mapped as a sky.</span>
@@ -46,8 +46,8 @@ export function Landing() {
         <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-400">
           Constellation reads your Resonance profile — the themes you respond
           to, the archetypes you keep returning to — and renders them as a
-          galaxy. Stars are titles you've engaged with. Clusters are the
-          themes that pull them together.
+          galaxy. Stars are titles you've engaged with. Clusters are the themes
+          that pull them together.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <SignInButton mode="modal">
