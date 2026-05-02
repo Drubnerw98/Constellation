@@ -160,7 +160,7 @@ describe("buildGraph", () => {
         source: "library",
         status: "consumed",
         fitNote: null,
-        tasteTags: ["alpha", "beta", "gamma", "wandering ronin", "broken cop"],
+        tasteTags: ["alpha", "wandering ronin", "broken cop"],
       },
       {
         id: "b",
@@ -171,11 +171,11 @@ describe("buildGraph", () => {
         source: "library",
         status: "consumed",
         fitNote: null,
-        tasteTags: ["alpha"],
+        tasteTags: ["alpha", "beta", "gamma"],
       },
     ];
     const { edges } = buildGraph(baseProfile, lib, []);
-    // shared = 1, max = 5 → strength 0.2, below 0.25 threshold
+    // shared = 1, min(3, 3) = 3 → strength 0.33, below 0.4 threshold
     expect(edges).toHaveLength(0);
   });
 

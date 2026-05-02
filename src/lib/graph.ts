@@ -205,6 +205,27 @@ function archetypesForLibraryTitle(
 }
 
 /**
+ * True if `key` collides with an already-inserted node title — either via
+ * exact normalized match, or via substring containment with a 4-char floor
+ * on the shorter side. The substring case catches verbose vs short forms of
+ * the same work ("First Law Trilogy" favorite vs "First Law Trilogy Boxed
+ * Set The Blade Itself..." library entry). Earlier inserts win, so the
+ * richer-data entry (library > rec > favorite) keeps its node.
+ */
+function titleAlreadyPresent(
+  key: string,
+  existing: Map<string, GraphNode>,
+): boolean {
+  if (existing.has(key)) return true;
+  for (const existingKey of existing.keys()) {
+    const shorter = key.length <= existingKey.length ? key : existingKey;
+    const longer = key.length > existingKey.length ? key : existingKey;
+    if (shorter.length >= 4 && longer.includes(shorter)) return true;
+  }
+  return false;
+}
+
+/**
  * Compute favorites client-side from a TasteProfile by flattening
  * `mediaAffinities[].favorites` and tagging each title via title-substring
  * match against profile evidence/attraction.
@@ -270,7 +291,7 @@ export function buildGraph(
 
   for (const rec of recommendations) {
     const key = normalize(rec.title);
-    if (nodesByTitle.has(key)) continue;
+    if (titleAlreadyPresent(key, nodesByTitle)) continue;
     const themes = matchLabelsFromTags(rec.tasteTags, themeLabels);
     const archetypes = matchLabelsFromTags(rec.tasteTags, archetypeLabels);
     nodesByTitle.set(key, {
@@ -296,7 +317,7 @@ export function buildGraph(
   // have no DB primary key (they live in profile JSONB).
   for (const fav of favorites) {
     const key = normalize(fav.title);
-    if (nodesByTitle.has(key)) continue;
+    if (titleAlreadyPresent(key, nodesByTitle)) continue;
     nodesByTitle.set(key, {
       id: `fav-${key.replace(/\s+/g, "-")}`,
       title: fav.title,
@@ -366,11 +387,19 @@ export function buildGraph(
       );
       const shared = sharedThemes.length + sharedArchetypes.length;
       if (shared === 0) continue;
-      const maxPossible = Math.max(
+      // Min-normalize: strength = shared / min(a.tagCount, b.tagCount).
+      // Equivalent to max(shared/a.tagCount, shared/b.tagCount) — captures
+      // "how well does the smaller node fit inside the larger's space."
+      // Max-normalization (the previous formula) penalized sparse nodes:
+      // a single-tag node sharing its only theme with a 5-tag node got
+      // 1/5 = 0.2 and was always pruned, even though the connection is
+      // total from the smaller node's perspective. The MAX_EDGES_PER_NODE
+      // cap downstream prevents over-edging from this loosening.
+      const minPossible = Math.min(
         a.themes.length + a.archetypes.length,
         b.themes.length + b.archetypes.length,
       );
-      const strength = maxPossible === 0 ? 0 : shared / maxPossible;
+      const strength = minPossible === 0 ? 0 : shared / minPossible;
       if (strength < MIN_EDGE_STRENGTH) continue;
       candidates.push({
         source: a.id,
