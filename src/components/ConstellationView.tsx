@@ -45,7 +45,10 @@ export function ConstellationView({
 }: Props) {
   const [clusterScaleMode, setClusterScaleMode] =
     useState<ClusterScaleMode>("weight");
-  const [showAllConnections, setShowAllConnections] = useState(true);
+  // Default to "selected" — declutter mode. The full edge mesh is visually
+  // busy at this node count; one-title-at-a-time is the better default for
+  // exploring a constellation.
+  const [showAllConnections, setShowAllConnections] = useState(false);
 
   const graph = useMemo(
     () =>
