@@ -680,6 +680,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
     };
 
     return (
+      <div className="relative h-full w-full">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
@@ -869,12 +870,6 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                 !inGalaxyMode && c.label === hoveredClusterLabel;
               const visualR =
                 c.radius * (isFocused ? 1.9 : isHovered ? 1.75 : 1.6);
-              // Hit area is intentionally smaller than the visual gradient: the
-              // gradient bleeds far past the cluster's actual node cloud, and big
-              // overlapping hit areas were thrashing the hovered-cluster state on
-              // every mouse move. 110px keeps adjacent clusters from overlapping
-              // even at the highest theme weight.
-              const hitR = Math.min(c.radius, 110);
               return (
                 <g key={c.label}>
                   <circle
@@ -890,23 +885,10 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                         : "opacity 220ms ease, r 220ms ease",
                     }}
                   />
-                  <circle
-                    cx={c.centerX}
-                    cy={c.centerY}
-                    r={hitR}
-                    fill="transparent"
-                    className="cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      flyToCluster(c.label);
-                    }}
-                    onMouseEnter={() => setHoveredClusterLabel(c.label)}
-                    onMouseLeave={() =>
-                      setHoveredClusterLabel((cur) =>
-                        cur === c.label ? null : cur,
-                      )
-                    }
-                  />
+                  {/* Cluster glow is purely visual — click/hover live on
+                      the label below, freeing the glow area to pass taps
+                      through to underlying nodes. Was a 110px hit circle
+                      that stole node taps on mobile. */}
                 </g>
               );
             })}
@@ -1043,22 +1025,27 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                   dominantBaseline="middle"
                   fill={c.color}
                   opacity={opacity}
-                  fontSize={isFocused || isHovered ? 14 : 12}
+                  fontSize={isFocused || isHovered ? 17 : 15}
                   fontStyle="italic"
                   fontWeight={400}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    flyToCluster(c.label);
+                  }}
+                  onMouseEnter={() => setHoveredClusterLabel(c.label)}
+                  onMouseLeave={() =>
+                    setHoveredClusterLabel((cur) =>
+                      cur === c.label ? null : cur,
+                    )
+                  }
                   style={{
-                    pointerEvents: "none",
-                    // Star-chart vibe: serif italic, generous tracking. The
-                    // serif (Iowan/Charter/Georgia stack) reads as old-style
-                    // astronomy chart labels; tight letter-spacing of small-
-                    // caps would be too clinical for the constellation feel,
-                    // so we go wider (0.12em) instead.
                     fontFamily:
                       '"Iowan Old Style", Charter, Georgia, "Times New Roman", serif',
                     letterSpacing: "0.08em",
                     paintOrder: "stroke fill",
                     stroke: "#05060a",
-                    strokeWidth: 3.5,
+                    strokeWidth: 4,
                     strokeLinejoin: "round",
                     transition: prefersReducedMotion
                       ? "none"
@@ -1164,6 +1151,12 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                   }
                   onClick={(e) => handleNodeClick(n.id, e)}
                 >
+                  {/* Invisible hit area, sized for touch. The 6-12px visible
+                      glyph is too small for finger taps once the SVG scales
+                      to a phone viewport (~1.9px on screen). 30 viewBox
+                      units = ~9px touch on a 375px phone — still small but
+                      meaningfully better. */}
+                  <circle cx={0} cy={0} r={Math.max(30, r * 2)} fill="transparent" />
                   {nodeGlyph(
                     n.mediaType,
                     r,
@@ -1233,21 +1226,25 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
             );
           })()}
 
-        {(isZoomed || inGalaxyMode) && (
-          <foreignObject x={20} y={CANVAS_H - 56} width={260} height={40}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                resetView();
-              }}
-              className="cursor-pointer rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 font-mono text-[10px] tracking-[0.18em] text-zinc-400 uppercase backdrop-blur-md transition-colors hover:border-white/20 hover:text-zinc-100"
-            >
-              {inGalaxyMode ? "← Back to constellation" : "↺ Reset view"}
-            </button>
-          </foreignObject>
-        )}
       </svg>
+
+      {/* Reset View button rendered as HTML overlay (not foreignObject)
+          so it doesn't scale with the viewBox. On a mobile viewport the
+          previous foreignObject button rendered at ~12px tall — invisible.
+          As HTML it stays a proper touch target at all sizes. */}
+      {(isZoomed || inGalaxyMode) && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            resetView();
+          }}
+          className="pointer-events-auto absolute bottom-4 left-4 cursor-pointer rounded-md border border-white/10 bg-[var(--color-surface)] px-3.5 py-2.5 font-mono text-[11px] tracking-[0.18em] text-zinc-300 uppercase backdrop-blur-md transition-colors hover:border-white/20 hover:text-zinc-100"
+        >
+          {inGalaxyMode ? "← Back" : "↺ Reset view"}
+        </button>
+      )}
+      </div>
     );
   },
 );

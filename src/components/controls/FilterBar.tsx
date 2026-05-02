@@ -40,7 +40,7 @@ export function FilterBar({
 }: Props) {
   const allActive = FORMATS.every((f) => activeFormats.has(f.id));
   return (
-    <div className="pointer-events-none absolute top-3 right-3 left-3 z-10 flex flex-col items-stretch gap-2 text-[12px] md:top-4 md:right-auto md:left-1/2 md:flex-row md:items-stretch md:gap-2.5 md:-translate-x-1/2">
+    <div className="pointer-events-none absolute top-16 right-3 left-3 z-10 flex flex-col items-stretch gap-2 text-[12px] md:top-4 md:right-auto md:left-1/2 md:flex-row md:items-stretch md:gap-2.5 md:-translate-x-1/2">
       <Group caption="Media">
         {FORMATS.map((f) => {
           const active = activeFormats.has(f.id);

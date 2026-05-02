@@ -54,7 +54,7 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
                 Theme
               </div>
               <h2
-                className="mt-2 font-serif text-xl leading-snug italic"
+                className="mt-2 font-serif text-2xl leading-snug italic"
                 style={{ color: shown.color }}
               >
                 {shown.label}
@@ -62,8 +62,11 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
             </div>
             <button
               type="button"
-              onClick={onClose}
-              className="-mt-1 -mr-1 cursor-pointer rounded p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="-mt-2 -mr-2 cursor-pointer rounded p-3 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
               aria-label="Exit galaxy mode"
             >
               <svg
@@ -86,7 +89,7 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
                 <h3 className="mb-3 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
                   Evidence
                 </h3>
-                <p className="text-[13px] leading-relaxed text-zinc-300">
+                <p className="text-[14px] leading-relaxed text-zinc-300">
                   {theme.evidence}
                 </p>
               </section>

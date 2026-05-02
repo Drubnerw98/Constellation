@@ -103,7 +103,7 @@ export function DetailPanel({
               <div className="font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
                 {SOURCE_LABEL[shown.source]}
               </div>
-              <h2 className="mt-2 text-xl leading-snug font-semibold text-white">
+              <h2 className="mt-2 text-2xl leading-snug font-semibold text-white">
                 {shown.title}
               </h2>
               <div className="mt-2 font-mono text-[11px] tracking-wide text-zinc-400">
@@ -119,8 +119,11 @@ export function DetailPanel({
             </div>
             <button
               type="button"
-              onClick={onClose}
-              className="-mt-1 -mr-1 cursor-pointer rounded p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="-mt-2 -mr-2 cursor-pointer rounded p-3 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
               aria-label="Close"
             >
               <svg
@@ -156,7 +159,7 @@ export function DetailPanel({
                         className="mt-[5px] inline-block h-1.5 w-1.5 shrink-0 rounded-full"
                         style={{ background: clusterColor(label) }}
                       />
-                      <span className="font-serif text-[13px] text-zinc-200 italic">
+                      <span className="font-serif text-[14px] text-zinc-200 italic">
                         {label}
                       </span>
                     </li>
@@ -171,7 +174,7 @@ export function DetailPanel({
                   {shown.archetypes.map((label) => (
                     <li
                       key={label}
-                      className="font-serif text-[13px] leading-relaxed text-zinc-200 italic"
+                      className="font-serif text-[14px] leading-relaxed text-zinc-200 italic"
                     >
                       {label}
                     </li>
@@ -192,7 +195,7 @@ export function DetailPanel({
                           className="w-full cursor-pointer rounded-md px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
                         >
                           <div className="flex items-baseline justify-between gap-3">
-                            <div className="text-[13px] leading-snug text-zinc-100">
+                            <div className="text-[14px] leading-snug text-zinc-100">
                               {n.title}
                             </div>
                             <div className="shrink-0 font-mono text-[10px] tracking-wide text-zinc-500">
