@@ -65,6 +65,102 @@ function primaryClusterFor(
   return byLabel.get(d.primaryTheme) ?? null;
 }
 
+/**
+ * Subtle visual hierarchy: scale node size by quality signal. Highly-rated
+ * library items and high-matchScore recs sit slightly larger than the
+ * baseline; unrated/low-score ones slightly smaller. Range is intentionally
+ * narrow (~0.85x to 1.2x) so the variation is felt, not announced.
+ */
+function nodeSizeMultiplier(n: GraphNode): number {
+  if (n.source === "library") {
+    if (n.rating != null) return 0.85 + (n.rating / 5) * 0.35;
+    return 1.0;
+  }
+  if (n.matchScore != null) return 0.85 + n.matchScore * 0.35;
+  return 1.0;
+}
+
+/**
+ * Per-format node glyph. All shapes are roughly equal in visual area so
+ * differentiation reads as identity, not size. Drawn at origin (0,0); the
+ * parent <g> handles positioning via transform.
+ *
+ *   movie  → circle
+ *   tv     → rounded square (boxy screen)
+ *   anime  → hexagon
+ *   game   → diamond
+ *   manga  → tall rectangle (page)
+ *   book   → taller, narrower rectangle (book spine)
+ */
+function nodeGlyph(
+  mediaType: GraphNode["mediaType"],
+  r: number,
+  fill: string,
+  stroke: string,
+  strokeWidth: number,
+) {
+  const common = { fill, stroke, strokeWidth };
+  switch (mediaType) {
+    case "movie":
+      return <circle cx={0} cy={0} r={r} {...common} />;
+    case "tv":
+      return (
+        <rect
+          x={-r * 1.05}
+          y={-r * 0.8}
+          width={r * 2.1}
+          height={r * 1.6}
+          rx={r * 0.3}
+          {...common}
+        />
+      );
+    case "anime": {
+      const h = r * 1.05;
+      const w = h * 0.866;
+      const pts = [
+        [0, -h],
+        [w, -h * 0.5],
+        [w, h * 0.5],
+        [0, h],
+        [-w, h * 0.5],
+        [-w, -h * 0.5],
+      ]
+        .map((p) => `${p[0]},${p[1]}`)
+        .join(" ");
+      return <polygon points={pts} {...common} />;
+    }
+    case "game": {
+      const d = r * 1.2;
+      return (
+        <polygon
+          points={`0,-${d} ${d},0 0,${d} -${d},0`}
+          {...common}
+        />
+      );
+    }
+    case "manga":
+      return (
+        <rect
+          x={-r * 0.85}
+          y={-r * 1.2}
+          width={r * 1.7}
+          height={r * 2.4}
+          {...common}
+        />
+      );
+    case "book":
+      return (
+        <rect
+          x={-r * 0.7}
+          y={-r * 1.4}
+          width={r * 1.4}
+          height={r * 2.8}
+          {...common}
+        />
+      );
+  }
+}
+
 export const ConstellationCanvas = forwardRef<
   ConstellationCanvasHandle,
   Props
@@ -79,7 +175,7 @@ export const ConstellationCanvas = forwardRef<
     unknown
   > | null>(null);
   const dragBehaviorRef = useRef<d3.DragBehavior<
-    SVGCircleElement,
+    SVGGraphicsElement,
     unknown,
     GraphNode | null
   > | null>(null);
@@ -237,9 +333,9 @@ export const ConstellationCanvas = forwardRef<
   useEffect(() => {
     const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
     dragBehaviorRef.current = d3
-      .drag<SVGCircleElement, unknown, GraphNode | null>()
+      .drag<SVGGraphicsElement, unknown, GraphNode | null>()
       .subject(function () {
-        const id = (this as SVGCircleElement).getAttribute("data-id");
+        const id = (this as SVGGraphicsElement).getAttribute("data-id");
         return id ? (nodeById.get(id) ?? null) : null;
       })
       .on("start", (event) => {
@@ -265,15 +361,17 @@ export const ConstellationCanvas = forwardRef<
       });
   }, [graph, prefersReducedMotion]);
 
-  // Attach the drag behavior to whatever circle.node elements are currently
-  // in the DOM. Runs after every render — d3's .call(drag) is idempotent so
+  // Attach the drag behavior to whatever .node elements are currently in
+  // the DOM. Runs after every render — d3's .call(drag) is idempotent so
   // re-attaching is cheap, and this guards against React reconciliation
-  // remounting circle nodes (which silently drops the previous binding).
+  // remounting nodes (which silently drops the previous binding). Selector
+  // is `.node` (not `circle.node`) because node shapes vary by mediaType:
+  // <g class="node"> wrapper hosts circle / rect / polygon glyphs.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg || !dragBehaviorRef.current) return;
     d3.select(svg)
-      .selectAll<SVGCircleElement, unknown>("circle.node")
+      .selectAll<SVGGraphicsElement, unknown>(".node")
       .call(dragBehaviorRef.current);
   });
 
@@ -296,7 +394,7 @@ export const ConstellationCanvas = forwardRef<
           return false;
         const target = event.target as Element | null;
         if (!target) return true;
-        return target.closest("circle.node") === null;
+        return target.closest(".node") === null;
       })
       .on("zoom", (event) => {
         setTransform(event.transform);
@@ -308,7 +406,7 @@ export const ConstellationCanvas = forwardRef<
     // double-click behavior (which zooms in 2x).
     d3.select(svg).on("dblclick", (event: MouseEvent) => {
       const target = event.target as Element | null;
-      if (target?.closest("circle.node")) return;
+      if (target?.closest(".node")) return;
       d3.select(svg)
         .transition()
         .duration(450)
@@ -615,7 +713,8 @@ export const ConstellationCanvas = forwardRef<
           const dimmed = isDimmed(n.id);
           const isFocus = n.id === focusId;
           const isNeighbor = focusNeighbors.has(n.id);
-          const baseR = NODE_RADIUS;
+          const sizeMul = nodeSizeMultiplier(n);
+          const baseR = NODE_RADIUS * sizeMul;
           const r = isFocus ? baseR * 4.2 : isNeighbor ? baseR * 3.2 : baseR * 2.6;
           let opacity = dimmed ? 0.1 : isFocus ? 0.85 : 0.55;
           if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
@@ -651,11 +750,13 @@ export const ConstellationCanvas = forwardRef<
           const dimmed = isDimmed(n.id);
           const isFocus = n.id === focusId;
           const isNeighbor = focusNeighbors.has(n.id);
-          const r = isFocus
-            ? NODE_RADIUS * 1.55
-            : isNeighbor
-              ? NODE_RADIUS * 1.2
-              : NODE_RADIUS;
+          const sizeMul = nodeSizeMultiplier(n);
+          const r =
+            (isFocus
+              ? NODE_RADIUS * 1.55
+              : isNeighbor
+                ? NODE_RADIUS * 1.2
+                : NODE_RADIUS) * sizeMul;
           let opacity = dimmed ? 0.4 : 1;
           if (inGalaxyMode && !inFocusedCluster(n.id)) opacity *= 0.15;
           const filteredOut = !activeFormats.has(n.mediaType);
@@ -669,22 +770,17 @@ export const ConstellationCanvas = forwardRef<
           if (!loadedNodeIds.has(n.id)) opacity = 0;
           const color = nodeColor.get(n.id) ?? "#cbd5e1";
           return (
-            <circle
+            <g
               key={n.id}
               data-id={n.id}
               className="node cursor-pointer"
-              cx={n.x ?? 0}
-              cy={n.y ?? 0}
-              r={r}
-              fill="#fefce8"
-              stroke={color}
-              strokeWidth={isFocus ? 2 : 1.4}
+              transform={`translate(${n.x ?? 0},${n.y ?? 0})`}
               opacity={opacity}
               filter={isFocus ? "url(#node-glow-strong)" : undefined}
               style={{
                 transition: prefersReducedMotion
                   ? "none"
-                  : "opacity 600ms ease, r 180ms ease",
+                  : "opacity 600ms ease",
                 pointerEvents: filteredOut ? "none" : undefined,
               }}
               onMouseEnter={() => setHoveredNodeId(n.id)}
@@ -692,7 +788,9 @@ export const ConstellationCanvas = forwardRef<
                 setHoveredNodeId((cur) => (cur === n.id ? null : cur))
               }
               onClick={(e) => handleNodeClick(n.id, e)}
-            />
+            >
+              {nodeGlyph(n.mediaType, r, "#fefce8", color, isFocus ? 2 : 1.4)}
+            </g>
           );
         })}
       </g>
@@ -703,7 +801,7 @@ export const ConstellationCanvas = forwardRef<
         <circle
           cx={transform.applyX(selectedNode.x ?? 0)}
           cy={transform.applyY(selectedNode.y ?? 0)}
-          r={NODE_RADIUS * 2.4 * transform.k}
+          r={NODE_RADIUS * 2.4 * nodeSizeMultiplier(selectedNode) * transform.k}
           fill="none"
           stroke={nodeColor.get(selectedNode.id) ?? "#fefce8"}
           strokeWidth={1}
