@@ -36,6 +36,19 @@ const CANVAS_W = 1200;
 const CANVAS_H = 800;
 const NODE_RADIUS = 6;
 
+// Extended bounds for the background starfield + nebulae. The constellation
+// itself lives within [0..CANVAS_W] × [0..CANVAS_H], but at minimum zoom
+// level (0.6×) the viewport sees roughly 2× the canvas in each dimension.
+// The starfield + nebulae are generated across this larger box so the
+// background always covers what the user can see — no awkward black void
+// past the cluster orbit.
+const BG_X_MIN = -CANVAS_W * 0.6;
+const BG_X_MAX = CANVAS_W * 1.6;
+const BG_Y_MIN = -CANVAS_H * 0.6;
+const BG_Y_MAX = CANVAS_H * 1.6;
+const BG_X_RANGE = BG_X_MAX - BG_X_MIN;
+const BG_Y_RANGE = BG_Y_MAX - BG_Y_MIN;
+
 interface Star {
   x: number;
   y: number;
@@ -80,21 +93,23 @@ function seededStars(
   };
   const pickFill = () =>
     STAR_FILLS[Math.floor(rand() * STAR_FILLS.length)] ?? "#e9ecf2";
+  const x = () => BG_X_MIN + rand() * BG_X_RANGE;
+  const y = () => BG_Y_MIN + rand() * BG_Y_RANGE;
   // Distant layer: tiny, low opacity, dense
   for (let i = 0; i < distantCount; i++) {
     out.push({
-      x: rand() * CANVAS_W,
-      y: rand() * CANVAS_H,
+      x: x(),
+      y: y(),
       r: 0.3 + rand() * 0.5,
       o: 0.12 + rand() * 0.2,
       fill: pickFill(),
     });
   }
-  // Midfield: moderate size + opacity (the previous default layer)
+  // Midfield: moderate size + opacity
   for (let i = 0; i < midCount; i++) {
     out.push({
-      x: rand() * CANVAS_W,
-      y: rand() * CANVAS_H,
+      x: x(),
+      y: y(),
       r: 0.5 + rand() * 0.9,
       o: 0.22 + rand() * 0.4,
       fill: pickFill(),
@@ -103,8 +118,8 @@ function seededStars(
   // Anchor stars: bright, varied, sparse
   for (let i = 0; i < anchorCount; i++) {
     out.push({
-      x: rand() * CANVAS_W,
-      y: rand() * CANVAS_H,
+      x: x(),
+      y: y(),
       r: 1.6 + rand() * 1.0,
       o: 0.6 + rand() * 0.3,
       fill: pickFill(),
@@ -160,17 +175,40 @@ function nodeSizeMultiplier(n: GraphNode): number {
   return 1.0;
 }
 
+function pointsFromCoords(coords: number[][]): string {
+  return coords.map((p) => `${p[0]},${p[1]}`).join(" ");
+}
+
+function starPoints(
+  count: number,
+  outerR: number,
+  innerR: number,
+): string {
+  const coords: number[][] = [];
+  const total = count * 2;
+  for (let i = 0; i < total; i++) {
+    const angle = (i / total) * Math.PI * 2 - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    coords.push([Math.cos(angle) * r, Math.sin(angle) * r]);
+  }
+  return pointsFromCoords(coords);
+}
+
 /**
  * Per-format node glyph. All shapes are roughly equal in visual area so
  * differentiation reads as identity, not size. Drawn at origin (0,0); the
  * parent <g> handles positioning via transform.
  *
- *   movie  → circle
- *   tv     → rounded square (boxy screen)
- *   anime  → hexagon
- *   game   → diamond
- *   manga  → tall rectangle (page)
- *   book   → taller, narrower rectangle (book spine)
+ *   movie  → circle (round, classic)
+ *   tv     → triangle pointing up (bold geometric)
+ *   anime  → hexagon (six-sided)
+ *   game   → diamond (rotated square)
+ *   manga  → 5-point star (the constellation primitive)
+ *   book   → 4-point sparkle star (compass / burst)
+ *
+ * Squares and rectangles read as UI chrome, not stars; the previous TV
+ * rounded-square and manga/book rectangles felt off at this scale.
+ * Replaced with shapes that all read as celestial objects.
  */
 function nodeGlyph(
   mediaType: GraphNode["mediaType"],
@@ -183,53 +221,67 @@ function nodeGlyph(
   switch (mediaType) {
     case "movie":
       return <circle cx={0} cy={0} r={r} {...common} />;
-    case "tv":
+    case "tv": {
+      // Equilateral triangle pointing up. Slightly bigger r to compensate
+      // for the visual-area difference vs a circle of the same r.
+      const h = r * 1.2;
+      const w = h * 0.866;
       return (
-        <rect
-          x={-r * 1.05}
-          y={-r * 0.8}
-          width={r * 2.1}
-          height={r * 1.6}
-          rx={r * 0.3}
+        <polygon
+          points={pointsFromCoords([
+            [0, -h * 0.85],
+            [w, h * 0.55],
+            [-w, h * 0.55],
+          ])}
+          strokeLinejoin="round"
           {...common}
         />
       );
+    }
     case "anime": {
       const h = r * 1.05;
       const w = h * 0.866;
-      const pts = [
-        [0, -h],
-        [w, -h * 0.5],
-        [w, h * 0.5],
-        [0, h],
-        [-w, h * 0.5],
-        [-w, -h * 0.5],
-      ]
-        .map((p) => `${p[0]},${p[1]}`)
-        .join(" ");
-      return <polygon points={pts} {...common} />;
+      return (
+        <polygon
+          points={pointsFromCoords([
+            [0, -h],
+            [w, -h * 0.5],
+            [w, h * 0.5],
+            [0, h],
+            [-w, h * 0.5],
+            [-w, -h * 0.5],
+          ])}
+          {...common}
+        />
+      );
     }
     case "game": {
       const d = r * 1.2;
-      return <polygon points={`0,-${d} ${d},0 0,${d} -${d},0`} {...common} />;
+      return (
+        <polygon
+          points={pointsFromCoords([
+            [0, -d],
+            [d, 0],
+            [0, d],
+            [-d, 0],
+          ])}
+          {...common}
+        />
+      );
     }
     case "manga":
       return (
-        <rect
-          x={-r * 0.85}
-          y={-r * 1.2}
-          width={r * 1.7}
-          height={r * 2.4}
+        <polygon
+          points={starPoints(5, r * 1.25, r * 0.5)}
+          strokeLinejoin="round"
           {...common}
         />
       );
     case "book":
       return (
-        <rect
-          x={-r * 0.7}
-          y={-r * 1.4}
-          width={r * 1.4}
-          height={r * 2.8}
+        <polygon
+          points={starPoints(4, r * 1.3, r * 0.42)}
+          strokeLinejoin="round"
           {...common}
         />
       );
@@ -273,7 +325,18 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }, []);
 
-    const stars = useMemo(() => seededStars(180, 90, 18), []);
+    const stars = useMemo(() => seededStars(800, 320, 80), []);
+    // The brightest 8 anchor stars get cross-flares — thin radiating
+    // lines that read as starlight diffraction. Expensive at large counts,
+    // so we limit to a handful of the brightest.
+    const flareStars = useMemo(
+      () =>
+        stars
+          .filter((s) => s.r > 1.8 && s.o > 0.7)
+          .sort((a, b) => b.r - a.r)
+          .slice(0, 8),
+      [stars],
+    );
 
     // Staggered fade-in on first load: stars come up first as a backdrop, then
     // each title star twinkles in. Skipped under prefers-reduced-motion so
@@ -376,8 +439,10 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
         // alphaTarget keeps the simulation ticking gently forever (drift-on-
         // rest). Constellation should feel like stars in slow orbital motion,
         // not a frozen graph. 0 when prefers-reduced-motion so the layout
-        // settles and stays still for users who opted out of motion.
-        .alphaTarget(prefersReducedMotion ? 0 : 0.012)
+        // settles and stays still for users who opted out of motion. Bumped
+        // from 0.012 to 0.03 — drift was technically active before but too
+        // subtle to read as motion at this node count.
+        .alphaTarget(prefersReducedMotion ? 0 : 0.03)
         .on("tick", () => {
           const padding = NODE_RADIUS * 4.5;
           for (const n of nodes) {
@@ -437,7 +502,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
           const subject = event.subject as GraphNode | null;
           if (!subject) return;
           if (!event.active)
-            simRef.current?.alphaTarget(prefersReducedMotion ? 0 : 0.012);
+            simRef.current?.alphaTarget(prefersReducedMotion ? 0 : 0.03);
           subject.fx = null;
           subject.fy = null;
         });
@@ -665,8 +730,9 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
 
         <g className="zoom-layer" transform={transform.toString()}>
           {/* Nebula layer — drawn first so stars + clusters sit on top.
-              Three big soft blobs in opposing corners give the canvas
-              cosmic depth without competing with the constellation. */}
+              Soft blobs distributed across the extended background bounds
+              so the cosmos extends past the constellation viewBox; user
+              sees nebula at any zoom level. */}
           <g
             className="nebula"
             opacity={starfieldLit ? 1 : 0}
@@ -676,6 +742,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                 : "opacity 1800ms ease-out",
             }}
           >
+            {/* In-bounds nebulae (sit behind the constellation itself) */}
             <ellipse
               cx={CANVAS_W * 0.18}
               cy={CANVAS_H * 0.22}
@@ -697,6 +764,69 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               ry={CANVAS_H * 0.4}
               fill="url(#nebula-warm)"
             />
+            {/* Out-of-bounds nebulae (cover what user sees when zoomed
+                out past the viewBox) */}
+            <ellipse
+              cx={-CANVAS_W * 0.25}
+              cy={CANVAS_H * 0.55}
+              rx={CANVAS_W * 0.5}
+              ry={CANVAS_H * 0.6}
+              fill="url(#nebula-purple)"
+            />
+            <ellipse
+              cx={CANVAS_W * 1.3}
+              cy={CANVAS_H * 0.35}
+              rx={CANVAS_W * 0.5}
+              ry={CANVAS_H * 0.55}
+              fill="url(#nebula-deep-blue)"
+            />
+            <ellipse
+              cx={CANVAS_W * 0.4}
+              cy={-CANVAS_H * 0.3}
+              rx={CANVAS_W * 0.55}
+              ry={CANVAS_H * 0.45}
+              fill="url(#nebula-warm)"
+            />
+            <ellipse
+              cx={CANVAS_W * 0.6}
+              cy={CANVAS_H * 1.35}
+              rx={CANVAS_W * 0.6}
+              ry={CANVAS_H * 0.5}
+              fill="url(#nebula-deep-blue)"
+            />
+          </g>
+          <g
+            className="star-flares"
+            opacity={starfieldLit ? 1 : 0}
+            style={{
+              transition: prefersReducedMotion
+                ? "none"
+                : "opacity 1800ms ease-out",
+            }}
+          >
+            {flareStars.map((s, i) => {
+              const len = s.r * 8;
+              return (
+                <g key={`flare-${i}`} opacity={0.5}>
+                  <line
+                    x1={s.x - len}
+                    y1={s.y}
+                    x2={s.x + len}
+                    y2={s.y}
+                    stroke={s.fill}
+                    strokeWidth={0.5}
+                  />
+                  <line
+                    x1={s.x}
+                    y1={s.y - len}
+                    x2={s.x}
+                    y2={s.y + len}
+                    stroke={s.fill}
+                    strokeWidth={0.5}
+                  />
+                </g>
+              );
+            })}
           </g>
           <g
             className="starfield"
@@ -886,13 +1016,22 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                   dominantBaseline="middle"
                   fill={c.color}
                   opacity={opacity}
-                  fontSize={isFocused || isHovered ? 13 : 11}
+                  fontSize={isFocused || isHovered ? 14 : 12}
+                  fontStyle="italic"
+                  fontWeight={400}
                   style={{
                     pointerEvents: "none",
-                    letterSpacing: "0.05em",
+                    // Star-chart vibe: serif italic, generous tracking. The
+                    // serif (Iowan/Charter/Georgia stack) reads as old-style
+                    // astronomy chart labels; tight letter-spacing of small-
+                    // caps would be too clinical for the constellation feel,
+                    // so we go wider (0.12em) instead.
+                    fontFamily:
+                      '"Iowan Old Style", Charter, Georgia, "Times New Roman", serif',
+                    letterSpacing: "0.08em",
                     paintOrder: "stroke fill",
                     stroke: "#05060a",
-                    strokeWidth: 3,
+                    strokeWidth: 3.5,
                     strokeLinejoin: "round",
                     transition: prefersReducedMotion
                       ? "none"

@@ -282,16 +282,13 @@ The client sends `Authorization: Bearer <getToken()>` to `/api/profile/export`. 
 
 Things flagged but NOT decided. Surfacing them so a future contributor (or future-me) doesn't quietly resolve them by accident.
 
-### 9a. Uniform circular cluster layout
+### 9a. Cluster layout — resolved (force-directed)
 
-Current: themes orbit canvas center at fixed radius. The user has flagged that this looks like a UI pattern, not a galaxy — no asymmetry, no negative space, theme weight under-utilized. Alternatives to consider before refining the current layout further:
+Was: uniform circular orbit. Now: force-directed placement in a small auxiliary D3 simulation (in `lib/graph.ts:placeClusters`). Each theme is a body with weight-derived charge (heavier themes repel more), collide enforces minimum spacing equal to render radius + margin, and a weak center force keeps the constellation centered. Initial positions seeded from a hash of theme labels — same profile produces the same layout across reloads.
 
-- Force-directed cluster placement (clusters repel each other; weight controls "mass")
-- Spiral / golden ratio arrangement, weight-driven radius
-- Two-tier: high-weight themes form a tight inner orbit, lower-weight ones a wider scatter
-- Fully physics-driven with no fixed cluster positions
-
-Don't refactor unprompted. Surface options when the user revisits.
+Cluster size has two modes (toggle in FilterBar):
+- `weight` (default): radius = 45 + theme.weight × 55. Reflects how strongly the theme matters in the user's profile.
+- `members`: radius = 38 + min(memberCount, 8) × 9. Reflects how many titles populate the cluster.
 
 ### 9b. Density (20-40 nodes) — addressed
 

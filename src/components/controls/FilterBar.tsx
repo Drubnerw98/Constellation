@@ -1,4 +1,5 @@
 import type { MediaType } from "../../types/graph";
+import type { ClusterScaleMode } from "../../lib/graph";
 
 const FORMATS: { id: MediaType; label: string }[] = [
   { id: "movie", label: "Movies" },
@@ -13,9 +14,17 @@ interface Props {
   activeFormats: Set<MediaType>;
   onToggle: (format: MediaType) => void;
   onReset: () => void;
+  clusterScaleMode: ClusterScaleMode;
+  onClusterScaleModeChange: (mode: ClusterScaleMode) => void;
 }
 
-export function FilterBar({ activeFormats, onToggle, onReset }: Props) {
+export function FilterBar({
+  activeFormats,
+  onToggle,
+  onReset,
+  clusterScaleMode,
+  onClusterScaleModeChange,
+}: Props) {
   const allActive = FORMATS.every((f) => activeFormats.has(f.id));
   return (
     <div className="pointer-events-none absolute top-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/10 bg-[#0b0f1a]/85 px-1.5 py-1 text-xs backdrop-blur-md">
@@ -46,6 +55,23 @@ export function FilterBar({ activeFormats, onToggle, onReset }: Props) {
           reset
         </button>
       )}
+      <span aria-hidden className="mx-1 h-4 w-px bg-white/10" />
+      <button
+        type="button"
+        onClick={() =>
+          onClusterScaleModeChange(
+            clusterScaleMode === "weight" ? "members" : "weight",
+          )
+        }
+        className="pointer-events-auto rounded-full px-3 py-1 text-[11px] text-zinc-500 transition-colors hover:text-zinc-300"
+        aria-pressed={clusterScaleMode === "members"}
+        title="Cluster size: theme weight (default) vs. number of titles in the cluster"
+      >
+        scale by{" "}
+        <span className="text-zinc-300">
+          {clusterScaleMode === "weight" ? "weight" : "titles"}
+        </span>
+      </button>
     </div>
   );
 }

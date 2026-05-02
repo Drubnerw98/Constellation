@@ -7,7 +7,7 @@ import { ClusterPanel } from "./constellation/ClusterPanel";
 import { DetailPanel } from "./constellation/DetailPanel";
 import { FilterBar } from "./controls/FilterBar";
 import { SearchInput } from "./controls/SearchInput";
-import { buildGraph } from "../lib/graph";
+import { buildGraph, type ClusterScaleMode } from "../lib/graph";
 import type { MediaType } from "../types/graph";
 import type {
   Favorite,
@@ -43,9 +43,19 @@ export function ConstellationView({
   recommendations,
   favorites,
 }: Props) {
+  const [clusterScaleMode, setClusterScaleMode] =
+    useState<ClusterScaleMode>("weight");
+
   const graph = useMemo(
-    () => buildGraph(profile, library, recommendations, favorites),
-    [profile, library, recommendations, favorites],
+    () =>
+      buildGraph(
+        profile,
+        library,
+        recommendations,
+        favorites,
+        clusterScaleMode,
+      ),
+    [profile, library, recommendations, favorites, clusterScaleMode],
   );
 
   const canvasRef = useRef<ConstellationCanvasHandle>(null);
@@ -97,6 +107,8 @@ export function ConstellationView({
         activeFormats={activeFormats}
         onToggle={toggleFormat}
         onReset={resetFormats}
+        clusterScaleMode={clusterScaleMode}
+        onClusterScaleModeChange={setClusterScaleMode}
       />
       <ClusterPanel
         cluster={focusedCluster}

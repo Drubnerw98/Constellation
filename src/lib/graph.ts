@@ -1,3 +1,4 @@
+import * as d3 from "d3";
 import type {
   Favorite,
   LibraryItem,
@@ -6,6 +7,8 @@ import type {
 } from "../types/profile";
 import type { Graph, GraphEdge, GraphNode, ThemeCluster } from "../types/graph";
 import { colorForThemeIndex } from "./colors";
+
+export type ClusterScaleMode = "weight" | "members";
 
 const CANVAS_W = 1200;
 const CANVAS_H = 800;
@@ -260,6 +263,7 @@ export function buildGraph(
   library: LibraryItem[],
   recommendations: RecommendationItem[],
   favorites: Favorite[] = [],
+  clusterScaleMode: ClusterScaleMode = "weight",
 ): Graph {
   const themeLabels = new Set(profile.themes.map((t) => t.label));
   const archetypeLabels = new Set(profile.archetypes.map((a) => a.label));
@@ -433,22 +437,132 @@ export function buildGraph(
     edges.push(e);
   }
 
+  // Member counts (used by both layout-mass and the optional
+  // members-mode cluster sizing).
+  const memberCountByLabel = new Map<string, number>();
+  for (const theme of profile.themes) {
+    memberCountByLabel.set(
+      theme.label,
+      nodes.filter((n) => n.themes.includes(theme.label)).length,
+    );
+  }
+
+  const clusterRadiusFor = (theme: TasteProfile["themes"][number]): number => {
+    if (clusterScaleMode === "members") {
+      const m = memberCountByLabel.get(theme.label) ?? 0;
+      // 1 member → 45px, 8+ members → ~110px. Same visual range as weight
+      // mode so the toggle doesn't blow up the canvas scale.
+      return 38 + Math.min(m, 8) * 9;
+    }
+    return 45 + theme.weight * 55;
+  };
+
+  const placements = placeClusters(profile.themes, clusterRadiusFor);
+  const placementByLabel = new Map(placements.map((p) => [p.label, p]));
+
   const clusters: ThemeCluster[] = profile.themes.map((theme, i) => {
-    const angle = (i / profile.themes.length) * Math.PI * 2 - Math.PI / 2;
-    const orbitRadius = Math.min(CANVAS_W, CANVAS_H) * 0.38;
     const memberNodeIds = nodes
       .filter((n) => n.themes.includes(theme.label))
       .map((n) => n.id);
+    const p = placementByLabel.get(theme.label);
     return {
       label: theme.label,
       weight: theme.weight,
       color: colorForThemeIndex(i),
-      centerX: CANVAS_W / 2 + Math.cos(angle) * orbitRadius,
-      centerY: CANVAS_H / 2 + Math.sin(angle) * orbitRadius,
-      radius: 45 + theme.weight * 55,
+      centerX: p?.x ?? CANVAS_W / 2,
+      centerY: p?.y ?? CANVAS_H / 2,
+      radius: clusterRadiusFor(theme),
       memberNodeIds,
     };
   });
 
   return { nodes, edges, clusters };
+}
+
+/**
+ * Force-directed cluster placement. Replaces the previous uniform circular
+ * orbit. Each theme is a body in a small auxiliary simulation:
+ *   - charge (repulsion) scales with theme.weight — heavier themes push
+ *     harder, so they end up with more space around them.
+ *   - collide enforces minimum spacing equal to each cluster's render
+ *     radius plus margin so glows don't overlap.
+ *   - center pulls everything toward canvas center.
+ *
+ * Initial positions are seeded by a hash of the theme labels, so the
+ * layout is **deterministic per profile** — same set of themes always
+ * produces the same layout. Different profiles get different layouts.
+ */
+interface ClusterPlacement extends d3.SimulationNodeDatum {
+  label: string;
+  weight: number;
+  radius: number;
+}
+
+function placeClusters(
+  themes: TasteProfile["themes"],
+  radiusFor: (theme: TasteProfile["themes"][number]) => number,
+): ClusterPlacement[] {
+  if (themes.length === 0) return [];
+
+  // Deterministic seed from the concatenated theme labels — same profile
+  // → same layout across reloads, but a new theme shifts things.
+  let seed = 1337;
+  for (const t of themes) {
+    for (let i = 0; i < t.label.length; i++) {
+      seed = ((seed * 31) ^ t.label.charCodeAt(i)) | 0;
+    }
+  }
+  const rand = () => {
+    seed = ((seed * 1664525) + 1013904223) | 0;
+    return ((seed >>> 0) % 1_000_000) / 1_000_000;
+  };
+
+  const placement: ClusterPlacement[] = themes.map((t) => ({
+    label: t.label,
+    weight: t.weight,
+    radius: radiusFor(t),
+    // Seeded offset from canvas center, biased to the inner ~60% of the
+    // canvas so initial positions don't start clipped against bounds.
+    x: CANVAS_W / 2 + (rand() - 0.5) * CANVAS_W * 0.55,
+    y: CANVAS_H / 2 + (rand() - 0.5) * CANVAS_H * 0.55,
+  }));
+
+  const sim = d3
+    .forceSimulation<ClusterPlacement>(placement)
+    .force(
+      "charge",
+      d3
+        .forceManyBody<ClusterPlacement>()
+        .strength((d) => -1400 - d.weight * 1500),
+    )
+    .force(
+      "collide",
+      d3
+        .forceCollide<ClusterPlacement>()
+        .radius((d) => d.radius + 28)
+        .strength(0.95),
+    )
+    .force(
+      "center",
+      d3.forceCenter(CANVAS_W / 2, CANVAS_H / 2).strength(0.04),
+    )
+    .stop();
+
+  // Manual ticks (sim.stop() prevents auto-tick) plus per-tick clamp
+  // so clusters stay inside canvas bounds even if forces would launch
+  // them outside.
+  for (let i = 0; i < 320; i++) {
+    sim.tick();
+    for (const c of placement) {
+      const m = c.radius + 24;
+      if (typeof c.x === "number") {
+        c.x = Math.max(m, Math.min(CANVAS_W - m, c.x));
+      }
+      if (typeof c.y === "number") {
+        c.y = Math.max(m, Math.min(CANVAS_H - m, c.y));
+      }
+    }
+  }
+
+  return placement;
 }
