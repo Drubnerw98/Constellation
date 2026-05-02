@@ -651,7 +651,7 @@ export const ConstellationCanvas = forwardRef<
         })}
       </g>
 
-      <g className="edges">
+      <g className="edges" style={{ pointerEvents: "none" }}>
         {edges.map((e, i) => {
           const s = e.source as GraphNode;
           const t = e.target as GraphNode;
@@ -661,7 +661,7 @@ export const ConstellationCanvas = forwardRef<
           const galaxyDim =
             inGalaxyMode &&
             !(inFocusedCluster(s.id) && inFocusedCluster(t.id));
-          let opacity = active ? 0.85 : dimmed ? 0.04 : 0.1;
+          let opacity = active ? 0.85 : dimmed ? 0.04 : 0.14;
           if (galaxyDim) opacity *= 0.2;
           if (!matchesFormat(s.id) || !matchesFormat(t.id)) opacity *= 0.05;
           const clusterHoverDim =
@@ -669,18 +669,43 @@ export const ConstellationCanvas = forwardRef<
             !inGalaxyMode &&
             !(inHoveredCluster(s.id) && inHoveredCluster(t.id));
           if (clusterHoverDim) opacity *= 0.25;
-          const stroke = active ? "#fef3c7" : "#9aa4b2";
+          // Theme-tint: pick color of strongest shared theme. Otherwise
+          // fall back to neutral gray. Active state always uses the warm
+          // highlight so it reads as "this is the connection you're
+          // looking at" regardless of theme.
+          let themeColor: string | null = null;
+          let bestWeight = -1;
+          for (const themeLabel of e.sharedThemes) {
+            const cluster = clusterByLabel.get(themeLabel);
+            if (cluster && cluster.weight > bestWeight) {
+              bestWeight = cluster.weight;
+              themeColor = cluster.color;
+            }
+          }
+          const stroke = active ? "#fef3c7" : (themeColor ?? "#9aa4b2");
           const width = (0.5 + e.strength * 1.4) * (active ? 1.6 : 1);
+          // Gentle quadratic curve via control point perpendicular to the
+          // chord midpoint. Magnitude scales with chord length so short
+          // edges stay near-straight, long edges arc visibly.
+          const x1 = s.x ?? 0;
+          const y1 = s.y ?? 0;
+          const x2 = t.x ?? 0;
+          const y2 = t.y ?? 0;
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const curveAmt = len * 0.09;
+          const cx = (x1 + x2) / 2 + (-dy / len) * curveAmt;
+          const cy = (y1 + y2) / 2 + (dx / len) * curveAmt;
           return (
-            <line
+            <path
               key={i}
-              x1={s.x ?? 0}
-              y1={s.y ?? 0}
-              x2={t.x ?? 0}
-              y2={t.y ?? 0}
+              d={`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`}
+              fill="none"
               stroke={stroke}
               strokeOpacity={opacity}
               strokeWidth={width}
+              strokeLinecap="round"
               style={{
                 transition: prefersReducedMotion
                   ? "none"
