@@ -44,6 +44,11 @@ const STATUS_LABEL: Record<GraphNode["status"], string> = {
   plan_to: "plan to",
 };
 
+const SOURCE_LABEL: Record<GraphNode["source"], string> = {
+  library: "from your library",
+  recommendation: "recommendation",
+};
+
 export function DetailPanel({
   node,
   graph,
@@ -65,42 +70,49 @@ export function DetailPanel({
   const clusterColor = (label: string): string =>
     graph.clusters.find((c) => c.label === label)?.color ?? "#9ca3af";
 
+  const accentColor = shown?.primaryTheme
+    ? clusterColor(shown.primaryTheme)
+    : "transparent";
+
   const connected = shown ? connectedTitlesFor(graph, shown.id) : [];
 
   return (
     <aside
-      className="pointer-events-auto absolute top-0 right-0 z-10 flex h-full w-[400px] flex-col border-l border-white/10 bg-[#0a0d18]/95 backdrop-blur-md transition-transform duration-300 ease-out"
-      style={{ transform: isOpen ? "translateX(0)" : "translateX(100%)" }}
+      className="pointer-events-auto absolute top-0 right-0 z-10 flex h-full w-[420px] flex-col bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out"
+      style={{
+        transform: isOpen ? "translateX(0)" : "translateX(100%)",
+        borderLeft: "1px solid rgb(255 255 255 / 0.08)",
+        // Subtle accent stripe in the clicked node's primary theme color —
+        // visual continuity between canvas and panel.
+        boxShadow: `inset 2px 0 0 0 ${accentColor}`,
+      }}
       aria-hidden={!isOpen}
     >
       {shown && (
         <>
-          <div className="flex items-start justify-between gap-3 border-b border-white/5 px-5 py-4">
+          <header className="flex items-start justify-between gap-3 border-b border-white/5 px-6 pt-6 pb-5">
             <div className="min-w-0">
-              <div className="text-[10px] tracking-wider text-zinc-500 uppercase">
-                {shown.source === "library"
-                  ? "from your library"
-                  : "recommendation"}
+              <div className="font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
+                {SOURCE_LABEL[shown.source]}
               </div>
-              <h2 className="mt-0.5 text-lg leading-tight font-medium text-white">
+              <h2 className="mt-2 text-xl leading-snug font-semibold text-white">
                 {shown.title}
               </h2>
-              <div className="mt-1 text-xs text-zinc-400">
-                {shown.mediaType}
-                {shown.year ? ` · ${shown.year}` : ""}
-                {shown.rating !== null
-                  ? ` · ${shown.rating}★`
-                  : shown.matchScore !== null
-                    ? ` · ${Math.round(shown.matchScore * 100)}% match`
-                    : ""}
-                {" · "}
-                {STATUS_LABEL[shown.status]}
+              <div className="mt-2 font-mono text-[11px] tracking-wide text-zinc-400">
+                <span className="text-zinc-300">{shown.mediaType}</span>
+                {shown.year ? <span> · {shown.year}</span> : null}
+                {shown.rating !== null ? (
+                  <span> · {shown.rating}★</span>
+                ) : shown.matchScore !== null ? (
+                  <span> · {Math.round(shown.matchScore * 100)}% match</span>
+                ) : null}
+                <span> · {STATUS_LABEL[shown.status]}</span>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="-mt-1 -mr-1 rounded p-1 text-zinc-500 hover:bg-white/5 hover:text-zinc-200"
+              className="-mt-1 -mr-1 cursor-pointer rounded p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
               aria-label="Close"
             >
               <svg
@@ -115,80 +127,72 @@ export function DetailPanel({
                 <path d="M3 3l10 10M13 3L3 13" />
               </svg>
             </button>
-          </div>
+          </header>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4 text-sm text-zinc-300">
+          <div className="flex-1 overflow-y-auto px-6 py-5 text-sm text-zinc-300">
             {/* Per-item AI rationale (rec.explanation / library.fitNote) is
                 deliberately not surfaced here. It only exists for ~20% of
-                items (consumed library + recs); rendering it inconsistently
-                read as broken. Cluster-level evidence (in the cluster panel
-                during galaxy mode) carries the "why" surface instead. The
-                data still flows through the type chain in case we revisit. */}
+                items; rendering it inconsistently read as broken. Cluster-
+                level evidence (cluster panel during galaxy mode) carries
+                the "why" surface instead. */}
             {shown.themes.length > 0 && (
-              <section className="mb-5">
-                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
-                  Themes
-                </h3>
-                <ul className="space-y-1.5">
+              <Section title="Themes">
+                <ul className="space-y-2">
                   {shown.themes.map((label) => (
                     <li
                       key={label}
-                      className="flex items-baseline gap-2 text-xs leading-relaxed text-zinc-300"
+                      className="flex items-baseline gap-2.5 leading-relaxed"
                     >
                       <span
                         aria-hidden
-                        className="mt-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                        className="mt-[5px] inline-block h-1.5 w-1.5 shrink-0 rounded-full"
                         style={{ background: clusterColor(label) }}
                       />
-                      <span>{label}</span>
+                      <span className="font-serif text-[13px] text-zinc-200 italic">
+                        {label}
+                      </span>
                     </li>
                   ))}
                 </ul>
-              </section>
+              </Section>
             )}
 
             {shown.archetypes.length > 0 && (
-              <section className="mb-5">
-                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
-                  Archetypes
-                </h3>
-                <ul className="space-y-1.5">
+              <Section title="Archetypes">
+                <ul className="space-y-2">
                   {shown.archetypes.map((label) => (
                     <li
                       key={label}
-                      className="text-xs leading-relaxed text-zinc-300"
+                      className="font-serif text-[13px] leading-relaxed text-zinc-200 italic"
                     >
                       {label}
                     </li>
                   ))}
                 </ul>
-              </section>
+              </Section>
             )}
 
             {connected.length > 0 && (
-              <section className="mb-5">
-                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
-                  Connected titles
-                </h3>
-                <ul className="space-y-1.5">
+              <Section title="Connected titles">
+                <ul className="-mx-2 space-y-0.5">
                   {connected.map(
                     ({ node: n, sharedThemes, sharedArchetypes }) => (
                       <li key={n.id}>
                         <button
                           type="button"
                           onClick={() => onSelectConnected(n.id)}
-                          className="w-full rounded px-2 py-1.5 text-left transition-colors hover:bg-white/5"
+                          className="w-full cursor-pointer rounded-md px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
                         >
-                          <div className="flex items-baseline justify-between gap-2">
-                            <div className="font-medium text-zinc-200">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <div className="text-[13px] leading-snug text-zinc-100">
                               {n.title}
                             </div>
-                            <div className="shrink-0 text-[10px] text-zinc-500">
+                            <div className="shrink-0 font-mono text-[10px] tracking-wide text-zinc-500">
                               {n.mediaType}
                               {n.year ? ` · ${n.year}` : ""}
                             </div>
                           </div>
-                          <div className="mt-0.5 text-[11px] text-zinc-500">
+                          <div className="mt-1 font-mono text-[10px] tracking-wide text-zinc-500">
                             shares{" "}
                             {[...sharedThemes, ...sharedArchetypes].join(" · ")}
                           </div>
@@ -197,11 +201,11 @@ export function DetailPanel({
                     ),
                   )}
                 </ul>
-              </section>
+              </Section>
             )}
 
             {connected.length === 0 && (
-              <div className="text-xs text-zinc-500 italic">
+              <div className="font-mono text-[11px] tracking-wide text-zinc-500 italic">
                 No strong connections to other titles in this constellation.
               </div>
             )}
@@ -209,5 +213,22 @@ export function DetailPanel({
         </>
       )}
     </aside>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mb-7">
+      <h3 className="mb-3 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
+        {title}
+      </h3>
+      {children}
+    </section>
   );
 }

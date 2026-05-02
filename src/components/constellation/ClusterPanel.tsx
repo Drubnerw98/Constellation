@@ -9,18 +9,11 @@ interface Props {
 }
 
 /**
- * Cluster info panel — slides in from the left when galaxy mode is active
- * (i.e., when a cluster has been focused via label click or zoom-in).
- *
+ * Cluster info panel — slides in from the left when galaxy mode is active.
  * Surfaces the theme's AI-generated `evidence` text — the right level of
- * granularity for "why does this cluster exist in your profile." This
- * replaces the per-item "Why this fits" surface that only existed for
- * ~20% of items; theme evidence exists for every cluster, so rendering
- * is consistent.
+ * granularity for "why does this cluster exist in your profile."
  */
 export function ClusterPanel({ cluster, profile, onClose }: Props) {
-  // Keep the last non-null cluster so the panel can finish its slide-out
-  // animation after the focus is cleared. Same pattern as DetailPanel.
   const [displayCluster, setDisplayCluster] = useState<ThemeCluster | null>(
     cluster,
   );
@@ -36,19 +29,25 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
 
   return (
     <aside
-      className="pointer-events-auto absolute top-0 left-0 z-10 flex h-full w-[400px] flex-col border-r border-white/10 bg-[#0a0d18]/95 backdrop-blur-md transition-transform duration-300 ease-out"
-      style={{ transform: isOpen ? "translateX(0)" : "translateX(-100%)" }}
+      className="pointer-events-auto absolute top-0 left-0 z-10 flex h-full w-[420px] flex-col bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out"
+      style={{
+        transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+        borderRight: "1px solid rgb(255 255 255 / 0.08)",
+        boxShadow: shown
+          ? `inset -2px 0 0 0 ${shown.color}`
+          : "inset -2px 0 0 0 transparent",
+      }}
       aria-hidden={!isOpen}
     >
       {shown && (
         <>
-          <div className="flex items-start justify-between gap-3 border-b border-white/5 px-5 py-4">
+          <header className="flex items-start justify-between gap-3 border-b border-white/5 px-6 pt-6 pb-5">
             <div className="min-w-0">
-              <div className="text-[10px] tracking-wider text-zinc-500 uppercase">
+              <div className="font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
                 Theme
               </div>
               <h2
-                className="mt-0.5 text-lg leading-tight font-medium text-white"
+                className="mt-2 font-serif text-xl leading-snug italic"
                 style={{ color: shown.color }}
               >
                 {shown.label}
@@ -57,7 +56,7 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="-mt-1 -mr-1 rounded p-1 text-zinc-500 hover:bg-white/5 hover:text-zinc-200"
+              className="-mt-1 -mr-1 cursor-pointer rounded p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
               aria-label="Exit galaxy mode"
             >
               <svg
@@ -72,15 +71,15 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
                 <path d="M3 3l10 10M13 3L3 13" />
               </svg>
             </button>
-          </div>
+          </header>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4 text-sm text-zinc-300">
+          <div className="flex-1 overflow-y-auto px-6 py-5 text-sm text-zinc-300">
             {theme && (
-              <section className="mb-5">
-                <h3 className="mb-2 text-[10px] tracking-wider text-zinc-500 uppercase">
+              <section className="mb-7">
+                <h3 className="mb-3 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
                   Evidence
                 </h3>
-                <p className="text-xs leading-relaxed text-zinc-300">
+                <p className="text-[13px] leading-relaxed text-zinc-300">
                   {theme.evidence}
                 </p>
               </section>

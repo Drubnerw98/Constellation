@@ -1234,14 +1234,14 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
           })()}
 
         {(isZoomed || inGalaxyMode) && (
-          <foreignObject x={20} y={CANVAS_H - 56} width={240} height={40}>
+          <foreignObject x={20} y={CANVAS_H - 56} width={260} height={40}>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 resetView();
               }}
-              className="rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-1.5 text-xs text-zinc-200 backdrop-blur-md transition-colors hover:bg-white/10"
+              className="cursor-pointer rounded-md border border-white/10 bg-[var(--color-surface)] px-3 py-2 font-mono text-[10px] tracking-[0.18em] text-zinc-400 uppercase backdrop-blur-md transition-colors hover:border-white/20 hover:text-zinc-100"
             >
               {inGalaxyMode ? "← Back to constellation" : "↺ Reset view"}
             </button>
