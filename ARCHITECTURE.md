@@ -32,9 +32,17 @@ constellation/
 │   ├── components/
 │   │   ├── ConstellationView.tsx          # canvas + filters + panel orchestrator
 │   │   ├── constellation/
-│   │   │   ├── ConstellationCanvas.tsx    # D3 simulation + SVG render layers (~1k lines)
+│   │   │   ├── ConstellationCanvas.tsx    # orchestrator — owns refs, view state, wiring
 │   │   │   ├── ClusterPanel.tsx           # slide-in (left) when galaxy mode is active
-│   │   │   └── DetailPanel.tsx            # slide-in (right) for selected node
+│   │   │   ├── DetailPanel.tsx            # slide-in (right) for selected node
+│   │   │   └── canvas/
+│   │   │       ├── helpers.ts             # constants, seededStars, wrapClusterLabel, etc.
+│   │   │       ├── glyph.tsx              # per-format node glyph
+│   │   │       ├── hooks.ts               # useForceSimulation/NodeDrag/ZoomBehavior/Fade-in
+│   │   │       ├── BackgroundLayers.tsx   # Defs + Nebula + Starfield + Flares + AntiStars
+│   │   │       ├── Clusters.tsx           # ClusterGlows + ClusterLabels
+│   │   │       ├── Graph.tsx              # Edges + NodeHalos + Nodes
+│   │   │       └── Overlays.tsx           # SelectedRing + NodeTooltip + ResetButton
 │   │   └── controls/
 │   │       ├── FilterBar.tsx              # format toggles
 │   │       └── SearchInput.tsx            # title search with pan-to-node

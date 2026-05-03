@@ -153,8 +153,6 @@ Constellation hits the Resonance API from the browser, so Resonance has to allow
 **Deferred (intentional):**
 
 - Pattern avoidances (the abstract `kind: "pattern"` ones) — would need a different surface; they don't have titles to attach to
-- Splitting the 1382-line `ConstellationCanvas.tsx` into hooks + subcomponents — works, just earns a wince in code review
-- Component tests beyond `lib/graph.ts` — API client + hook are testable but currently untested
 - Public read-only sharing (URL with a snapshot of someone else's constellation)
 - Keyboard navigation (Tab through nodes, Esc to close panels, arrow keys to pan)
 - Server-side caching of Resonance responses (would let it survive a backend outage)
