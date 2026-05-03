@@ -25,7 +25,11 @@ export class ApiError extends Error {
   }
 }
 
-const apiBase = import.meta.env.VITE_RESONANCE_API_URL ?? "";
+// Read at call time (not module load) so tests can stub the env var via
+// vi.stubEnv after imports have been hoisted.
+function getApiBase(): string {
+  return import.meta.env.VITE_RESONANCE_API_URL ?? "";
+}
 
 // Constellation maps what you're drawn to. "pending" recs are the AI's
 // prediction of fit, generated from your profile — that IS taste signal,
@@ -84,6 +88,7 @@ interface RawProfileExport {
 export async function fetchProfileExport(
   token: string,
 ): Promise<ProfileExport> {
+  const apiBase = getApiBase();
   if (!apiBase) {
     throw new ApiError("VITE_RESONANCE_API_URL is not configured", 0);
   }

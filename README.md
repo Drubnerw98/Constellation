@@ -8,14 +8,11 @@ A frontend-craft companion to [Resonance](https://github.com/Drubnerw98/Resonanc
 
 For the architectural deep-dive — the *why* behind every major decision — see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
-<!--
-  Screenshots go here. Suggested order:
-    docs/screenshots/landing.png      - signed-out hero
-    docs/screenshots/constellation.png - the rendered taste map
-    docs/screenshots/cluster-panel.png - cluster info panel in galaxy mode
-    docs/screenshots/detail-panel.png  - node detail panel with theme tags
-    docs/screenshots/mobile.png        - bottom-sheet panel on iPhone width
--->
+![Signed-out landing](./screenshots/landing.png)
+
+![A rendered taste constellation — six theme clusters with shared-theme edges](./screenshots/constellation.png)
+
+![Galaxy mode — focusing a cluster surfaces the AI-generated theme evidence](./screenshots/cluster-panel.png)
 
 ## Features
 
