@@ -1,5 +1,16 @@
 {
   "rewrites": [
     { "source": "/((?!.*\\.).*)", "destination": "/" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://intent-glider-61.clerk.accounts.dev; connect-src 'self' https://resonance-server-t4r8.onrender.com https://intent-glider-61.clerk.accounts.dev; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" }
+      ]
+    }
   ]
 }

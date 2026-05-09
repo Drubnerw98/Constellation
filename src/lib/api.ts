@@ -98,7 +98,6 @@ export async function fetchProfileExport(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    credentials: "include",
   });
   if (!res.ok) {
     let message = `Resonance API returned ${res.status}`;
