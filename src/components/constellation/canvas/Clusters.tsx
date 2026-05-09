@@ -110,7 +110,7 @@ export function ClusterLabels({
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const ux = dx / dist;
         const uy = dy / dist;
-        const labelDist = dist + c.radius + 36;
+        const labelDist = dist + c.radius + 70;
         const margin = 16;
         let labelX = CANVAS_W / 2 + ux * labelDist;
         let labelY = CANVAS_H / 2 + uy * labelDist;
