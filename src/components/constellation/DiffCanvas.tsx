@@ -506,16 +506,22 @@ function DiffClusterLabels({ positioned, scrub }: DiffClusterLabelsProps) {
         const labelDist =
           dist + (p.kind === "shared" ? p.toRadius : p.fromRadius ?? p.toRadius) +
           70;
-        const margin = 16;
+        // Top margin reserves space for the From/To pickers + back link +
+        // SiteMark + UserButton chrome strip; bottom margin reserves space
+        // for the scrub control. Without these reservations, cluster labels
+        // render through the chrome on initial layout.
+        const topMargin = 80;
+        const bottomMargin = 80;
+        const sideMargin = 16;
         let labelX = CANVAS_W / 2 + ux * labelDist;
         let labelY = CANVAS_H / 2 + uy * labelDist;
         const halfBlock = ((lines.length - 1) * lineHeight) / 2;
-        if (labelY - halfBlock < margin) labelY = margin + halfBlock;
-        if (labelY + halfBlock > CANVAS_H - margin)
-          labelY = CANVAS_H - margin - halfBlock;
-        if (labelX < margin + 80) labelX = margin + 80;
-        if (labelX > CANVAS_W - margin - 80)
-          labelX = CANVAS_W - margin - 80;
+        if (labelY - halfBlock < topMargin) labelY = topMargin + halfBlock;
+        if (labelY + halfBlock > CANVAS_H - bottomMargin)
+          labelY = CANVAS_H - bottomMargin - halfBlock;
+        if (labelX < sideMargin + 80) labelX = sideMargin + 80;
+        if (labelX > CANVAS_W - sideMargin - 80)
+          labelX = CANVAS_W - sideMargin - 80;
         const textAnchor =
           ux > 0.4 ? "start" : ux < -0.4 ? "end" : "middle";
         return (

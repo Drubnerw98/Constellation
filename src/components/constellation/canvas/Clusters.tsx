@@ -111,16 +111,20 @@ export function ClusterLabels({
         const ux = dx / dist;
         const uy = dy / dist;
         const labelDist = dist + c.radius + 70;
-        const margin = 16;
+        // Top margin reserves space for the chrome strip (SiteMark + Compare
+        // versions link + UserButton) which has no opaque backdrop and would
+        // otherwise read as cluster-label-through-text on initial render.
+        const topMargin = 80;
+        const sideMargin = 16;
         let labelX = CANVAS_W / 2 + ux * labelDist;
         let labelY = CANVAS_H / 2 + uy * labelDist;
         const halfBlock = ((lines.length - 1) * lineHeight) / 2;
-        if (labelY - halfBlock < margin) labelY = margin + halfBlock;
-        if (labelY + halfBlock > CANVAS_H - margin)
-          labelY = CANVAS_H - margin - halfBlock;
-        if (labelX < margin + 80) labelX = margin + 80;
-        if (labelX > CANVAS_W - margin - 80)
-          labelX = CANVAS_W - margin - 80;
+        if (labelY - halfBlock < topMargin) labelY = topMargin + halfBlock;
+        if (labelY + halfBlock > CANVAS_H - sideMargin)
+          labelY = CANVAS_H - sideMargin - halfBlock;
+        if (labelX < sideMargin + 80) labelX = sideMargin + 80;
+        if (labelX > CANVAS_W - sideMargin - 80)
+          labelX = CANVAS_W - sideMargin - 80;
         const textAnchor =
           ux > 0.4 ? "start" : ux < -0.4 ? "end" : "middle";
         const isFocused = c.label === focusedClusterLabel;
