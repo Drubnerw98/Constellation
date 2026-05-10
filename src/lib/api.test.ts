@@ -244,19 +244,21 @@ describe("fetchProfileExport", () => {
 describe("fetchVersions", () => {
   it("returns coerced versions array on 200", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse([
-        { id: 1, trigger: "onboarding", createdAt: "2024-01-01T00:00:00Z" },
-        {
-          id: 2,
-          trigger: "feedback_batch",
-          createdAt: "2024-02-01T00:00:00Z",
-        },
-        {
-          id: 3,
-          trigger: "manual_edit",
-          createdAt: "2024-03-01T00:00:00Z",
-        },
-      ]),
+      jsonResponse({
+        versions: [
+          { id: 1, trigger: "onboarding", createdAt: "2024-01-01T00:00:00Z" },
+          {
+            id: 2,
+            trigger: "feedback_batch",
+            createdAt: "2024-02-01T00:00:00Z",
+          },
+          {
+            id: 3,
+            trigger: "manual_edit",
+            createdAt: "2024-03-01T00:00:00Z",
+          },
+        ],
+      }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -269,14 +271,16 @@ describe("fetchVersions", () => {
 
   it("drops versions with unrecognized trigger values", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse([
-        { id: 1, trigger: "onboarding", createdAt: "2024-01-01T00:00:00Z" },
-        {
-          id: 2,
-          trigger: "future_unknown_trigger",
-          createdAt: "2024-02-01T00:00:00Z",
-        },
-      ]),
+      jsonResponse({
+        versions: [
+          { id: 1, trigger: "onboarding", createdAt: "2024-01-01T00:00:00Z" },
+          {
+            id: 2,
+            trigger: "future_unknown_trigger",
+            createdAt: "2024-02-01T00:00:00Z",
+          },
+        ],
+      }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -287,7 +291,9 @@ describe("fetchVersions", () => {
   });
 
   it("attaches the bearer token", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ versions: [] }));
     vi.stubGlobal("fetch", fetchMock);
 
     await fetchVersions("xyz-token");

@@ -182,11 +182,13 @@ export async function fetchVersions(token: string): Promise<ProfileVersion[]> {
     }
     throw new ApiError(message, res.status);
   }
-  const raw = (await res.json()) as RawProfileVersion[];
+  // Resonance wraps the list in `{ versions: [...] }`; matches the shape
+  // its own client consumes at apps/client/src/hooks/useProfileVersions.ts.
+  const body = (await res.json()) as { versions: RawProfileVersion[] };
   // Drop any version whose trigger we don't recognize rather than widening
   // the union — the diff UI is desktop-first, opinionated, and unknown
   // triggers would force every consumer to handle the fallback case.
-  return raw
+  return body.versions
     .map((v) => {
       const trigger = coerceTrigger(v.trigger);
       if (!trigger) return null;
