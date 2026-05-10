@@ -82,11 +82,14 @@ export function Home() {
         };
       case "loading":
       case "idle":
-      default:
         return {
           ...sampleFallback,
           bannerMessage: null,
         };
+      default: {
+        const _exhaustive: never = profileStatus;
+        return _exhaustive;
+      }
     }
   }, [profileStatus]);
 
