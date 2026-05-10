@@ -116,6 +116,10 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       () => new Map(graph.clusters.map((c) => [c.label, c])),
       [graph.clusters],
     );
+    const nodeById = useMemo(
+      () => new Map(graph.nodes.map((n) => [n.id, n])),
+      [graph.nodes],
+    );
     const nodeColor = useMemo(() => {
       const map = new Map<string, string>();
       for (const n of graph.nodes) {
@@ -178,16 +182,16 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       focusId !== null && !isEdgeActive(s, t);
     const inFocusedCluster = (id: string): boolean => {
       if (!focusedClusterLabel) return true;
-      const node = nodes.find((n) => n.id === id);
+      const node = nodeById.get(id);
       return node?.themes.includes(focusedClusterLabel) ?? false;
     };
     const inHoveredCluster = (id: string): boolean => {
       if (!hoveredClusterLabel) return false;
-      const node = nodes.find((n) => n.id === id);
+      const node = nodeById.get(id);
       return node?.themes.includes(hoveredClusterLabel) ?? false;
     };
     const matchesFormat = (id: string): boolean => {
-      const node = nodes.find((n) => n.id === id);
+      const node = nodeById.get(id);
       return node ? activeFormats.has(node.mediaType) : true;
     };
 
