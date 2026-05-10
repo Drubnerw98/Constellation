@@ -205,7 +205,7 @@ Favorites' `themes`/`archetypes` come pre-validated from Resonance — canonical
 
 ### 5f. Edge pruning
 
-Pairwise edges are computed via shared theme/archetype overlap (`shared / max(a.tagcount, b.tagcount)`). All pairs with `strength >= MIN_EDGE_STRENGTH (0.4)` are candidates. Then a **top-K-per-node cap (4)** prunes: an edge survives if it falls in either endpoint's top-4 by strength. Asymmetric ties survive (popular nodes accept many connections; sparse nodes cap at 4).
+Pairwise edges are computed via shared theme/archetype overlap (`shared / min(a.tagcount, b.tagcount)`). Min-normalization captures "how well the smaller node fits inside the larger's space" — a single-tag node sharing its only theme with a 5-tag partner scores 1.0, not 0.2 (which would always prune). All pairs with `strength >= MIN_EDGE_STRENGTH (0.4)` are candidates. Then a **top-K-per-node cap (3)** prunes: an edge survives if it falls in either endpoint's top-3 by strength. Asymmetric ties survive (popular nodes accept many connections; sparse nodes cap at 3).
 
 **Why a per-node cap, not a global cap:** the visualization should reflect each node's *strongest* relationships, not have well-connected nodes hog the edge budget while sparse nodes have nothing.
 
@@ -217,13 +217,13 @@ D3 force simulation tuned for ~30-70 nodes. Five forces, ordered by importance:
 
 | Force | Strength | Role |
 |-------|----------|------|
-| `forceX/Y` to primary cluster | 0.4 | The main attractor — pulls each node to its assigned cluster center |
+| `forceX/Y` to primary cluster | 0.55 | The main attractor — pulls each node to its assigned cluster center |
 | `forceCollide(NODE_RADIUS+8)` | 0.95 | Prevents nodes from stacking on top of each other |
 | `forceManyBody` | -420 | Charge repulsion — gives clusters internal spacing |
 | `forceLink` distance(140 + (1-s)*160) | 0.015 + s*0.05 | Weak link force — present so connected nodes drift slightly toward each other, but doesn't override cluster pull |
 | Tick boundary clamp | — | Manual: zero velocity at canvas edges so nodes don't escape |
 
-**Drift on rest:** `alphaTarget(0.012)` keeps the simulation ticking gently forever (nodes orbit slowly within their clusters instead of freezing). Set to 0 when `prefers-reduced-motion`.
+**Drift on rest:** `alphaTarget(0.03)` keeps the simulation ticking gently forever (nodes orbit slowly within their clusters instead of freezing). Set to 0 when `prefers-reduced-motion`.
 
 **Why React renders, not D3 attribute updates:** the tick handler calls `setTick(t => t+1)` to force a React re-render, and SVG elements read `n.x` / `n.y` directly from simulation node data via React props. The alternative (D3 selection + .attr()) bypasses React's reconciliation, which clashes with our hover/select state being in React. The cost is acceptable at this node count; would NOT scale to 10k+ nodes.
 
