@@ -141,12 +141,13 @@ constellation/
 
 ## 4. Routes
 
-Three routes, intentionally minimal:
+Four routes, intentionally minimal:
 
 | Path | Signed-in | Signed-out |
 |------|-----------|------------|
 | `/`  | `<Home>` (real data with sample fallback) | `<Landing>` (hero + CTAs) |
 | `/demo` | `<Demo>` (always sample) | `<Demo>` (always sample) |
+| `/diff` | `<Diff>` (animated profile-version diff) | `<Landing>` |
 | `*`  | redirect to `/` | redirect to `/` |
 
 **Why `/demo` exists:** for portfolio viewers who don't want to sign in. The sample profile is deliberately curated (`data/sampleProfile.ts`) — a coherent fictional taste that exercises every visual layer (cluster glow, edges, mixed media types, mixed statuses). The URL is shareable.
@@ -273,6 +274,73 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
 **Why cluster-level rationale, not per-item:** the previous "Why this fits" surface in the node detail panel only had data for ~20% of items (consumed library + recs); rendering it inconsistently read as broken on the empty 80%. Theme `evidence` exists for every cluster, so cluster-level rationale is consistent. The per-item `explanation`/`fitNote` data still flows through the type chain — kept for a possible future hover/tooltip surface — but isn't currently displayed.
 
 ---
+
+## 7b. Version diff (`/diff`)
+
+The diff route is a stretch feature — animated layout morph between two
+historical profile versions. Resonance mints a new profile version at
+onboarding completion, after a feedback batch reshapes the profile, or on
+manual edit. Resonance exposes:
+
+- `GET /api/profile/versions` → `ProfileVersion[]` (`{ id, trigger, createdAt }`)
+- `GET /api/profile/versions/:versionId/export` → same shape as `/api/profile/export`
+
+`src/lib/api.ts:fetchVersions` + `fetchVersionExport` wrap these. The Diff
+route defaults to the latest two versions (N and N-1) and falls through to
+an empty state when only one version exists.
+
+**`src/lib/diffGraph.ts:buildDiffGraph(fromExport, toExport)`** builds two
+underlying graphs via `buildGraph` and partitions:
+
+- **Clusters** (by normalized theme label): `shared` (in both), `addedTo`
+  (only in `to`), `removedFrom` (only in `from`).
+- **Nodes** (by canonicalized title — not db id, since favorites have
+  synthetic ids and library/rec database ids may differ across versions):
+  `stable` (both endpoints captured so the renderer can lerp positions +
+  surface cluster migration via `primaryTheme` differing), `added`
+  (`to`-only), `removed` (`from`-only).
+
+**Why not "morph" categorical changes:** a theme that exists in version N
+but not N-1 is a discrete fact about the profile. Smoothly interpolating
+its cluster glow from radius 0 implies a continuous change that didn't
+happen. We stage categorical changes explicitly via opacity ramps so the
+viewer reads "this is new" / "this is gone" instead of "this got bigger".
+
+**`src/components/constellation/DiffCanvas.tsx`** is the render. Two D3
+force simulations are settled offscreen at mount via `settleSimulation`
+(350 ticks, `alphaTarget=0`). Positions for stable nodes are captured into
+`{ fromX, fromY, toX, toY }` and the scrub-driven render lerps between
+them. Added nodes pin at `toX/toY` with an opacity ramp from `scrub=0.3
+→ 1`; removed nodes pin at `fromX/fromY` with `1 → 0` over `scrub=0..0.7`.
+Cluster glow centers + radii lerp for shared, opacity-ramp for categorical.
+
+Edges cross-fade — `from`-edges visible scrub `< 0.6`, `to`-edges visible
+scrub `> 0.4`, with a band of overlap. Documented in `DiffCanvas` that
+per-stable-edge endpoint interpolation was rejected; the gain wasn't worth
+the cost of title-keyed edge matching across two graphs.
+
+**Why two parallel sims, not one with target swap:** the live canvas's
+simulation uses cluster centers as `forceX/forceY` targets, so swapping
+the cluster set mid-flight would yank everything across the canvas at
+once. Two sims settled separately captures each layout's organic shape;
+the slider then interpolates between captures. The cost is two sim runs
+on mount; the render loop itself is cheap (just lerps).
+
+**Reduced motion:** slider is replaced with `From` / `To` snap buttons.
+Same rendering path, just `scrub ∈ {0, 1}` discretely.
+
+**Mobile:** `<768px` shows a "compare on a larger screen" hint. Architecture
+is desktop-first — the slider + canvas combo doesn't fit narrow viewports
+and contorting it would compromise both ends.
+
+**Resonance library/recs scope caveat:** the versioned export endpoint
+returns the user's CURRENT library + recs alongside the historical
+profile (this is a Resonance-side design choice — library/recs aren't
+snapshotted per-version). So the diff between versions shows
+**cluster-membership changes**, not library or rec set changes. The
+visualization highlights "the same title moved between themes" rather
+than "this title was added to your library since N-1" — which is the
+right framing anyway, since the profile IS the thing that versions.
 
 ## 8. Auth (Clerk)
 
