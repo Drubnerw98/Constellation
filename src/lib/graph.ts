@@ -235,16 +235,6 @@ function titleAlreadyPresent(
 }
 
 /**
- * Compute favorites client-side from a TasteProfile by flattening
- * `mediaAffinities[].favorites` and tagging each title via title-substring
- * match against profile evidence/attraction.
- *
- * Mirrors Resonance's server-side derivation in `/api/profile/export` so
- * sample data (and any future no-network path) produces identical output
- * to the API. The real-data path uses the API-provided favorites array
- * directly — this is for fallback / sample / demo only.
- */
-/**
  * Compute structured Avoidance[] from a TasteProfile by merging
  * profile.avoidances (kind: pattern) and profile.dislikedTitles (kind:
  * title). Mirrors Resonance's server-side derivation; used by sample/
@@ -263,6 +253,16 @@ export function deriveAvoidances(profile: TasteProfile): Avoidance[] {
   ];
 }
 
+/**
+ * Compute favorites client-side from a TasteProfile by flattening
+ * `mediaAffinities[].favorites` and tagging each title via title-substring
+ * match against profile evidence/attraction.
+ *
+ * Mirrors Resonance's server-side derivation in `/api/profile/export` so
+ * sample data (and any future no-network path) produces identical output
+ * to the API. The real-data path uses the API-provided favorites array
+ * directly — this is for fallback / sample / demo only.
+ */
 export function deriveFavorites(profile: TasteProfile): Favorite[] {
   return profile.mediaAffinities.flatMap((affinity) =>
     affinity.favorites.map((title) => ({
