@@ -198,9 +198,22 @@ export function titleAppearsIn(title: string, text: string): boolean {
   return false;
 }
 
+/** Combine a theme's display + structured fields into one searchable string.
+ * Post-2026-05-10 themes carry anchors/reinforcedBy as data; older ones
+ * only have free-text evidence. Joining both shapes lets `titleAppearsIn`
+ * stay shape-agnostic. */
+function themeHaystack(theme: TasteProfile["themes"][number]): string {
+  const refs = [...(theme.anchors ?? []), ...(theme.reinforcedBy ?? [])]
+    .map((r) => r.title)
+    .join(" · ");
+  return [theme.summary ?? "", theme.evidence ?? "", refs]
+    .filter((s) => s.length > 0)
+    .join(" · ");
+}
+
 function themesForLibraryTitle(title: string, profile: TasteProfile): string[] {
   return profile.themes
-    .filter((t) => titleAppearsIn(title, t.evidence))
+    .filter((t) => titleAppearsIn(title, themeHaystack(t)))
     .map((t) => t.label);
 }
 
@@ -269,7 +282,7 @@ export function deriveFavorites(profile: TasteProfile): Favorite[] {
       title,
       mediaType: affinity.format,
       themes: profile.themes
-        .filter((t) => titleAppearsIn(title, t.evidence))
+        .filter((t) => titleAppearsIn(title, themeHaystack(t)))
         .map((t) => t.label),
       archetypes: profile.archetypes
         .filter((a) => titleAppearsIn(title, a.attraction))

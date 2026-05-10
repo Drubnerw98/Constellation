@@ -47,26 +47,68 @@ describe("evidenceExcerpt", () => {
 });
 
 describe("buildResonancePrompt", () => {
-  it("includes the evidence excerpt when present", () => {
+  it("prefers summary + anchors when present", () => {
     expect(
-      buildResonancePrompt("Existential dread", "Stuff about meaninglessness."),
+      buildResonancePrompt("Burden-carrying protagonists", {
+        label: "Burden-carrying protagonists",
+        weight: 0.9,
+        summary: "Heroes who choose the harder right thing under accumulating cost.",
+        anchors: [
+          { title: "The Wire", mediaType: "tv" },
+          { title: "Disco Elysium", mediaType: "game" },
+        ],
+        reinforcedBy: [],
+      }),
+    ).toBe(
+      'Generate recommendations anchored to my "Burden-carrying protagonists" theme — Heroes who choose the harder right thing under accumulating cost. — anchored in The Wire, Disco Elysium',
+    );
+  });
+
+  it("uses summary alone when anchors are empty", () => {
+    expect(
+      buildResonancePrompt("Existential dread", {
+        label: "Existential dread",
+        weight: 0.8,
+        summary: "Stuff about meaninglessness.",
+        anchors: [],
+        reinforcedBy: [],
+      }),
     ).toBe(
       'Generate recommendations anchored to my "Existential dread" theme — Stuff about meaninglessness.',
     );
   });
 
-  it("falls back to bare period when evidence is missing", () => {
+  it("falls back to legacy evidence when summary and anchors are missing", () => {
+    expect(
+      buildResonancePrompt("Old theme", {
+        label: "Old theme",
+        weight: 0.5,
+        evidence: "Legacy evidence text from before the redesign.",
+      }),
+    ).toBe(
+      'Generate recommendations anchored to my "Old theme" theme — Legacy evidence text from before the redesign.',
+    );
+  });
+
+  it("falls back to bare period when theme is null or empty", () => {
     expect(buildResonancePrompt("Empty theme", null)).toBe(
       'Generate recommendations anchored to my "Empty theme" theme.',
     );
-    expect(buildResonancePrompt("Empty theme", "")).toBe(
-      'Generate recommendations anchored to my "Empty theme" theme.',
-    );
+    expect(
+      buildResonancePrompt("Empty theme", {
+        label: "Empty theme",
+        weight: 0.5,
+      }),
+    ).toBe('Generate recommendations anchored to my "Empty theme" theme.');
   });
 
   it("caps total length at 500 chars", () => {
     const huge = "x".repeat(800);
-    const result = buildResonancePrompt("Theme", huge);
+    const result = buildResonancePrompt("Theme", {
+      label: "Theme",
+      weight: 0.5,
+      evidence: huge,
+    });
     expect(result.length).toBeLessThanOrEqual(500);
   });
 });

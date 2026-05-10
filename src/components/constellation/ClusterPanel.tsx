@@ -1,10 +1,49 @@
 import { useState } from "react";
 import type { ThemeCluster } from "../../types/graph";
-import type { TasteProfile } from "../../types/profile";
+import type { TasteProfile, TitleRef } from "../../types/profile";
 import {
   buildResonancePrompt,
   buildResonanceRecommendationsUrl,
 } from "../../lib/resonanceLink";
+
+const FORMAT_GLYPH: Record<string, string> = {
+  movie: "▶",
+  tv: "■",
+  anime: "★",
+  manga: "❒",
+  game: "◆",
+  book: "❡",
+};
+
+function TitleChip({
+  ref_,
+  tone,
+  accent,
+}: {
+  ref_: TitleRef;
+  tone: "anchor" | "reinforce";
+  accent: string;
+}) {
+  return (
+    <li
+      className={
+        tone === "anchor"
+          ? "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12px] text-zinc-200"
+          : "inline-flex items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.02] px-2.5 py-0.5 text-[11px] text-zinc-400"
+      }
+      style={
+        tone === "anchor"
+          ? { borderColor: `${accent}66`, backgroundColor: `${accent}10` }
+          : undefined
+      }
+    >
+      <span aria-hidden className="text-[10px] opacity-70">
+        {FORMAT_GLYPH[ref_.mediaType] ?? "•"}
+      </span>
+      <span>{ref_.title}</span>
+    </li>
+  );
+}
 
 interface Props {
   cluster: ThemeCluster | null;
@@ -89,13 +128,57 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
 
           <div className="flex-1 overflow-y-auto px-6 py-5 text-sm text-zinc-300">
             {theme && (
-              <section className="mb-7">
-                <h3 className="mb-3 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
-                  Evidence
-                </h3>
-                <p className="text-[14px] leading-relaxed text-zinc-300">
-                  {theme.evidence}
-                </p>
+              <section className="mb-7 space-y-4">
+                {(() => {
+                  const summary = theme.summary && theme.summary.trim()
+                    ? theme.summary
+                    : theme.evidence ?? "";
+                  const anchors = theme.anchors ?? [];
+                  const reinforcedBy = theme.reinforcedBy ?? [];
+                  return (
+                    <>
+                      {summary && (
+                        <p className="text-[14px] leading-relaxed text-zinc-200">
+                          {summary}
+                        </p>
+                      )}
+                      {anchors.length > 0 && (
+                        <div>
+                          <h3 className="mb-2 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
+                            Anchored in
+                          </h3>
+                          <ul className="flex flex-wrap gap-1.5">
+                            {anchors.map((a, i) => (
+                              <TitleChip
+                                key={`a-${i}`}
+                                ref_={a}
+                                tone="anchor"
+                                accent={shown.color}
+                              />
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {reinforcedBy.length > 0 && (
+                        <div>
+                          <h3 className="mb-2 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
+                            Reinforced by
+                          </h3>
+                          <ul className="flex flex-wrap gap-1.5">
+                            {reinforcedBy.map((r, i) => (
+                              <TitleChip
+                                key={`r-${i}`}
+                                ref_={r}
+                                tone="reinforce"
+                                accent={shown.color}
+                              />
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </section>
             )}
           </div>
@@ -104,10 +187,7 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
             <button
               type="button"
               onClick={() => {
-                const prompt = buildResonancePrompt(
-                  shown.label,
-                  theme?.evidence,
-                );
+                const prompt = buildResonancePrompt(shown.label, theme);
                 const url = buildResonanceRecommendationsUrl(prompt);
                 window.open(url, "_blank", "noopener,noreferrer");
               }}

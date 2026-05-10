@@ -2,6 +2,8 @@
 // route, pre-filling the generate-batch prompt input. The Resonance side
 // owns the `?prompt=` URL-param handler; both sides build to that contract.
 
+import type { TasteTheme } from "../types/profile";
+
 // Cap matches Resonance's prompt-input ceiling. Keeping it here as a
 // constant so trimming logic is co-located with the contract assumption.
 const PROMPT_MAX_CHARS = 500;
@@ -10,11 +12,13 @@ const PROMPT_MAX_CHARS = 500;
 // evidence string can't blow the prompt budget on its own.
 const EVIDENCE_EXCERPT_MAX = 200;
 
-/** First sentence of `evidence` (split on `.`), trimmed and capped. Returns
- * the whole string when it's short enough. Empty input → empty string. */
-export function evidenceExcerpt(evidence: string | null | undefined): string {
-  if (!evidence) return "";
-  const trimmed = evidence.trim();
+/** First sentence of `text` (split on `.`), trimmed and capped. Returns
+ * the whole string when it's short enough. Empty input → empty string.
+ * Used to keep the legacy evidence fallback bounded; exported for
+ * test reuse. */
+export function evidenceExcerpt(text: string | null | undefined): string {
+  if (!text) return "";
+  const trimmed = text.trim();
   if (trimmed.length === 0) return "";
   if (trimmed.length <= EVIDENCE_EXCERPT_MAX) return trimmed;
   // Split on the first period that's followed by whitespace or end — avoids
@@ -30,18 +34,36 @@ export function evidenceExcerpt(evidence: string | null | undefined): string {
   return trimmed.slice(0, EVIDENCE_EXCERPT_MAX).trim();
 }
 
+/** Build the trailing clause for the deep-link prompt. Prefers the new
+ * structured fields (summary + anchor titles) when present; falls back to
+ * the legacy free-text evidence. */
+function themeContextClause(theme: TasteTheme | null | undefined): string {
+  if (!theme) return "";
+  const anchorTitles = (theme.anchors ?? []).map((a) => a.title).filter(Boolean);
+  const summary = theme.summary?.trim() ?? "";
+  if (summary || anchorTitles.length > 0) {
+    const parts: string[] = [];
+    if (summary) parts.push(summary);
+    if (anchorTitles.length > 0) {
+      parts.push(`anchored in ${anchorTitles.join(", ")}`);
+    }
+    return parts.join(" — ");
+  }
+  return evidenceExcerpt(theme.evidence);
+}
+
 /** Compose the prompt template Resonance pre-fills its generate-batch input
- * with. When evidence is missing/empty, omit the second clause entirely
- * rather than emitting a dangling em-dash. */
+ * with. When neither summary, anchors, nor evidence yield context, omit the
+ * second clause entirely rather than emitting a dangling em-dash. */
 export function buildResonancePrompt(
   themeName: string,
-  evidence: string | null | undefined,
+  theme: TasteTheme | null | undefined,
 ): string {
-  const excerpt = evidenceExcerpt(evidence);
+  const context = themeContextClause(theme);
   const base = `Generate recommendations anchored to my "${themeName}" theme`;
-  const full = excerpt ? `${base} — ${excerpt}` : `${base}.`;
-  // Defense-in-depth against the 500-char contract — a future theme name +
-  // evidence combo shouldn't be able to overflow Resonance's input.
+  const full = context ? `${base} — ${context}` : `${base}.`;
+  // Defense-in-depth against the 500-char contract — a future theme + context
+  // combo shouldn't be able to overflow Resonance's input.
   return full.length <= PROMPT_MAX_CHARS
     ? full
     : full.slice(0, PROMPT_MAX_CHARS);

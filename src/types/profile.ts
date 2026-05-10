@@ -3,10 +3,28 @@ import type { MediaType } from "./graph";
 export type Pacing = "slow-burn" | "propulsive" | "variable";
 export type Complexity = "layered" | "focused" | "epic";
 
+/** A reference to a specific work the user has engaged with. Mirrors the
+ * Resonance shared `TitleRef` shape so cluster panels can render attribution
+ * chips with a mediaType glyph without ambiguous title-only matching. */
+export interface TitleRef {
+  title: string;
+  mediaType: MediaType;
+}
+
 export interface TasteTheme {
   label: string;
   weight: number;
-  evidence: string;
+  /** Editorial one-sentence summary of why this theme resonates. Primary
+   * display string post-2026-05-10 schema change. */
+  summary?: string;
+  /** 1-4 anchor titles for this theme — rendered as primary chips. */
+  anchors?: TitleRef[];
+  /** 0-8 reinforcing titles — rendered as dimmer chips below anchors. */
+  reinforcedBy?: TitleRef[];
+  /** Legacy free-text evidence string. Kept for backward compat with profile
+   * exports persisted before the schema change; display surfaces fall back
+   * to this when `summary` is empty. */
+  evidence?: string;
 }
 
 export interface TasteArchetype {
