@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
 import { ConstellationView } from "../components/ConstellationView";
 import { SiteMark } from "../components/SiteMark";
@@ -104,6 +105,15 @@ export function Home() {
       />
       <div className="pointer-events-none absolute top-4 right-4 z-10 flex items-center gap-3">
         <SiteMark />
+        {/* /diff lives behind the same auth gate as /. Surfaced as a quiet
+            mono caption — the diff is a stretch feature, not the main
+            attraction. */}
+        <Link
+          to="/diff"
+          className="pointer-events-auto hidden font-mono text-[10px] tracking-[0.22em] text-zinc-500 uppercase transition-colors hover:text-zinc-200 md:inline-flex"
+        >
+          Compare versions →
+        </Link>
         <div className="pointer-events-auto rounded-full border border-white/10 bg-[#0b0f1a]/85 p-1 backdrop-blur-md">
           <UserButton
             appearance={{

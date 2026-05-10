@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { Demo } from "./routes/Demo";
+import { Diff } from "./routes/Diff";
 import { Home } from "./routes/Home";
 import { Landing } from "./routes/Landing";
 
@@ -21,6 +22,19 @@ export function App() {
         }
       />
       <Route path="/demo" element={<Demo />} />
+      <Route
+        path="/diff"
+        element={
+          <>
+            <SignedIn>
+              <Diff />
+            </SignedIn>
+            <SignedOut>
+              <Landing />
+            </SignedOut>
+          </>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
