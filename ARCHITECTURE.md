@@ -340,6 +340,7 @@ CI is configured via `.github/workflows/check.yml` — runs `typecheck`, `lint`,
 - **Required env vars (set in Vercel project settings):**
   - `VITE_CLERK_PUBLISHABLE_KEY` — same value Resonance uses
   - `VITE_RESONANCE_API_URL` — Resonance API base URL
+  - `VITE_RESONANCE_FRONTEND_URL` — Resonance frontend URL for `<ClusterPanel/>` deep links (`/recommendations?prompt=...`); distinct from the API URL because the deep link targets the web app, not the API. Falls back to the prod URL with a console warning if unset.
 - **CORS dependency:** the Constellation prod URL must be appended to the Resonance backend's `FRONTEND_ORIGIN` env on Render (comma-separated) before prod-to-prod calls work.
 - **SPA fallback:** `vercel.json` rewrites any path without a dot to `/` so `/demo` and future routes resolve to `index.html` on direct hit. Static assets (anything with a dot — `.svg`, `.js`, `.css`) are unaffected.
 

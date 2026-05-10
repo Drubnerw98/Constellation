@@ -90,16 +90,17 @@ pnpm install
 cp .env.local.example .env.local   # if it exists; else create one
 ```
 
-Two environment variables are required to run:
+Three environment variables are required to run:
 
 ```sh
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_...      # same value Resonance uses
-VITE_RESONANCE_API_URL=https://...           # Resonance API base URL
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...           # same value Resonance uses
+VITE_RESONANCE_API_URL=https://...                # Resonance API base URL
+VITE_RESONANCE_FRONTEND_URL=https://...           # Resonance frontend (deep links from cluster panel)
 ```
 
-Both are public (`VITE_*` are inlined at build). The Clerk key has to match the publishable key on the Resonance instance you're pointing at — they share OAuth identities. The Resonance URL is the API server (e.g. the Render-hosted Express service), not the Resonance frontend.
+All three are public (`VITE_*` are inlined at build). The Clerk key has to match the publishable key on the Resonance instance you're pointing at — they share OAuth identities. `VITE_RESONANCE_API_URL` is the API server (e.g. the Render-hosted Express service); `VITE_RESONANCE_FRONTEND_URL` is the Resonance web app (e.g. the Vercel-hosted React frontend). They're distinct because the cluster panel's "Generate a batch from this theme" button deep-links into Resonance's `/recommendations?prompt=...` route, which lives on the frontend.
 
-To run against a local Resonance backend, point `VITE_RESONANCE_API_URL` at `http://localhost:3001` and add `http://localhost:5174` to that backend's `FRONTEND_ORIGIN` env var so its CORS middleware accepts the call.
+To run against a local Resonance backend, point `VITE_RESONANCE_API_URL` at `http://localhost:3001` and add `http://localhost:5174` to that backend's `FRONTEND_ORIGIN` env var so its CORS middleware accepts the call. For the deep link, point `VITE_RESONANCE_FRONTEND_URL` at the local Resonance frontend (e.g. `http://localhost:5173`); if unset the button falls back to the prod URL with a console warning.
 
 ## Dev
 
@@ -122,6 +123,7 @@ Constellation deploys as a static SPA on **Vercel**. Backend dependency (Resonan
 2. **Environment variables** (Settings → Environment Variables, scoped Production + Preview + Development):
    - `VITE_CLERK_PUBLISHABLE_KEY` → same publishable key Resonance uses
    - `VITE_RESONANCE_API_URL` → Resonance API base URL (no trailing slash, no whitespace)
+   - `VITE_RESONANCE_FRONTEND_URL` → Resonance frontend URL for deep links (no trailing slash, no whitespace)
 3. **Deploy.** `vercel.json` ships an SPA rewrite so `/demo` and any future routes resolve to `index.html` on direct hit.
 
 ### Backend dependency — Resonance CORS

@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { ThemeCluster } from "../../types/graph";
 import type { TasteProfile } from "../../types/profile";
+import {
+  buildResonancePrompt,
+  buildResonanceRecommendationsUrl,
+} from "../../lib/resonanceLink";
 
 interface Props {
   cluster: ThemeCluster | null;
@@ -36,7 +40,7 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
 
   return (
     <aside
-      className={`pointer-events-auto absolute right-0 bottom-0 left-0 z-10 flex max-h-[82vh] flex-col rounded-t-xl bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out md:top-0 md:bottom-auto md:right-auto md:h-full md:max-h-none md:w-[420px] md:rounded-none ${transformClasses}`}
+      className={`pointer-events-auto absolute right-0 bottom-0 left-0 z-10 flex max-h-[82vh] flex-col rounded-t-xl bg-[var(--color-surface-solid)]/95 backdrop-blur-md transition-transform duration-300 ease-out md:top-0 md:right-auto md:bottom-auto md:h-full md:max-h-none md:w-[420px] md:rounded-none ${transformClasses}`}
       style={{
         borderTop: "1px solid rgb(255 255 255 / 0.08)",
         borderRight: "1px solid rgb(255 255 255 / 0.08)",
@@ -95,6 +99,29 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
               </section>
             )}
           </div>
+
+          <footer className="border-t border-white/5 px-6 py-5">
+            <button
+              type="button"
+              onClick={() => {
+                const prompt = buildResonancePrompt(
+                  shown.label,
+                  theme?.evidence,
+                );
+                const url = buildResonanceRecommendationsUrl(prompt);
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
+              className="group flex w-full cursor-pointer items-center justify-between rounded-md border border-white/10 px-4 py-3 text-left transition-colors hover:border-white/25 hover:bg-white/[0.04]"
+              style={{ borderLeft: `2px solid ${shown.color}` }}
+            >
+              <span className="font-serif text-[14px] text-zinc-100 italic">
+                Generate a batch from this theme
+              </span>
+              <span className="font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase transition-colors group-hover:text-zinc-300">
+                Resonance →
+              </span>
+            </button>
+          </footer>
         </>
       )}
     </aside>
