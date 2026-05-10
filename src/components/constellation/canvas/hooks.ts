@@ -12,8 +12,9 @@ import { CANVAS_H, CANVAS_W, NODE_RADIUS, primaryClusterFor } from "./helpers";
  * D3 force simulation lifecycle. Re-creates the simulation whenever the
  * graph or cluster mapping changes; tears down on unmount. Returns a ref
  * to the simulation so other hooks (drag, fly-to) can poke at it. The
- * `tickKey` is a render-trigger — incrementing it on every tick is what
- * pulls the latest `n.x`/`n.y` into React's render output.
+ * internal `setTickKey` call inside the tick handler is the render-trigger
+ * — incrementing on every tick is what pulls the latest `n.x`/`n.y` into
+ * React's render output. The counter itself is never read by callers.
  */
 export function useForceSimulation(
   graph: Graph,
@@ -21,10 +22,9 @@ export function useForceSimulation(
   prefersReducedMotion: boolean,
 ): {
   simRef: React.MutableRefObject<d3.Simulation<GraphNode, GraphEdge> | null>;
-  tickKey: number;
 } {
   const simRef = useRef<d3.Simulation<GraphNode, GraphEdge> | null>(null);
-  const [tickKey, setTickKey] = useState(0);
+  const [, setTickKey] = useState(0);
 
   useEffect(() => {
     const { nodes, edges } = graph;
@@ -94,7 +94,7 @@ export function useForceSimulation(
     };
   }, [graph, clusterByLabel, prefersReducedMotion]);
 
-  return { simRef, tickKey };
+  return { simRef };
 }
 
 /**
