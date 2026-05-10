@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { buildGraph } from "./graph";
+import {
+  assignPrimaryThemes,
+  buildGraph,
+  deriveAvoidances,
+  deriveFavorites,
+  matchLabel,
+  titleAppearsIn,
+} from "./graph";
+import type { GraphNode } from "../types/graph";
 import type {
   TasteProfile,
   LibraryItem,
@@ -256,3 +264,236 @@ describe("buildGraph", () => {
     }
   });
 });
+
+describe("matchLabel", () => {
+  // Tier 1: exact normalized match.
+  it("matches exact label after normalization", () => {
+    const labels = new Set(["earned sacrifice", "wandering ronin"]);
+    // Punctuation stripped, case folded.
+    expect(matchLabel("Earned-Sacrifice!", labels)).toBe("earned sacrifice");
+  });
+
+  it("returns null when nothing matches in any tier", () => {
+    const labels = new Set(["earned sacrifice", "wandering ronin"]);
+    expect(matchLabel("space opera", labels)).toBeNull();
+  });
+
+  // Tier 2: full-string substring with min-4-char floor.
+  it("matches substring containment when shorter side is 4+ chars", () => {
+    const labels = new Set([
+      "earned sacrifice through sustained commitment",
+    ]);
+    // "earned sacrifice" (16 chars) contained inside the longer canonical.
+    expect(matchLabel("earned sacrifice", labels)).toBe(
+      "earned sacrifice through sustained commitment",
+    );
+  });
+
+  it("rejects substring matches under the 4-char floor", () => {
+    const labels = new Set(["abandonment"]);
+    // "a" appears in "abandonment" but is below FUZZY_MIN_LEN=4.
+    // The single-character tag also has no content tokens (length>=3),
+    // so tier 3 returns null too.
+    expect(matchLabel("a", labels)).toBeNull();
+  });
+
+  // Tier 3: content-token overlap with bidirectional within-token substring.
+  // Constructed so tier 2 (full-string substring) cannot fire — neither
+  // full normalized form is a substring of the other — forcing the match
+  // to come from per-token overlap with morphology drift ("burden" inside
+  // "burdens").
+  it("matches via content-token within-token substring (morphology drift)", () => {
+    expect(
+      matchLabel(
+        "burden carrying",
+        new Set(["burdens of memory and time"]),
+      ),
+    ).toBe("burdens of memory and time");
+  });
+
+  it("excludes stopwords from token overlap", () => {
+    // Tag is purely stopwords + a too-short word; no content tokens.
+    // Tier 3 returns null because tagTokens is empty.
+    expect(matchLabel("the of as", new Set(["earned sacrifice"]))).toBeNull();
+  });
+});
+
+describe("titleAppearsIn", () => {
+  it("matches via direct normalized substring", () => {
+    expect(
+      titleAppearsIn("Aftersun", "loved Aftersun for its quiet grief"),
+    ).toBe(true);
+  });
+
+  it("matches via 2+ content-token overlap when direct substring fails", () => {
+    expect(
+      titleAppearsIn(
+        "The Assassination of Jesse James by the Coward Robert Ford",
+        "evidence text mentions Jesse James and Robert frankly",
+      ),
+    ).toBe(true);
+  });
+
+  it("does NOT match on 1-token overlap (threshold is 2)", () => {
+    expect(
+      titleAppearsIn(
+        "The Assassination of Jesse James by the Coward Robert Ford",
+        "evidence mentions assassination only and nothing else relevant",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("assignPrimaryThemes", () => {
+  it("picks a less-populated theme over a higher-weight one when tiebreak applies", () => {
+    // Naive (highest-weight wins) would put both nodes on alpha because
+    // alpha.weight > beta.weight. Load-balanced should put the second
+    // node on beta because alpha already has one resident.
+    const themes: TasteProfile["themes"] = [
+      { label: "alpha", weight: 0.9, evidence: "" },
+      { label: "beta", weight: 0.5, evidence: "" },
+    ];
+    const nodes: GraphNode[] = [
+      makeNode("n1", ["alpha", "beta"]),
+      makeNode("n2", ["alpha", "beta"]),
+    ];
+    assignPrimaryThemes(nodes, themes);
+    const primaries = nodes.map((n) => n.primaryTheme).sort();
+    // Naive baseline would yield ["alpha", "alpha"]; load-balanced
+    // spreads them.
+    expect(primaries).toEqual(["alpha", "beta"]);
+  });
+
+  it("seats single-theme nodes first (most-constrained-first)", () => {
+    // n1 is single-theme on alpha; n2 multi-theme on alpha+beta. With
+    // ascending sort by candidate count, n1 claims alpha first, pushing
+    // n2 to beta even though alpha is heavier.
+    const themes: TasteProfile["themes"] = [
+      { label: "alpha", weight: 0.9, evidence: "" },
+      { label: "beta", weight: 0.4, evidence: "" },
+    ];
+    const nodes: GraphNode[] = [
+      makeNode("multi", ["alpha", "beta"]),
+      makeNode("only-alpha", ["alpha"]),
+    ];
+    assignPrimaryThemes(nodes, themes);
+    expect(nodes.find((n) => n.id === "only-alpha")!.primaryTheme).toBe(
+      "alpha",
+    );
+    expect(nodes.find((n) => n.id === "multi")!.primaryTheme).toBe("beta");
+  });
+});
+
+describe("deriveFavorites", () => {
+  it("tags a favorite via evidence substring match", () => {
+    const profile: TasteProfile = {
+      themes: [
+        {
+          label: "quiet grief",
+          weight: 0.8,
+          evidence: "Aftersun cuts deep — quiet, slow.",
+        },
+      ],
+      archetypes: [
+        { label: "drifter", attraction: "Paterson's bus driver." },
+      ],
+      narrativePrefs: {
+        pacing: "slow-burn",
+        complexity: "layered",
+        tone: ["melancholic"],
+        endings: "ambiguous",
+      },
+      mediaAffinities: [
+        { format: "movie", comfort: 0.9, favorites: ["Aftersun"] },
+      ],
+      avoidances: [],
+    };
+    const favs = deriveFavorites(profile);
+    expect(favs).toHaveLength(1);
+    expect(favs[0]!.title).toBe("Aftersun");
+    expect(favs[0]!.themes).toEqual(["quiet grief"]);
+    expect(favs[0]!.archetypes).toEqual([]);
+  });
+
+  it("passes a favorite through with empty themes/archetypes when nothing matches", () => {
+    const profile: TasteProfile = {
+      themes: [
+        { label: "quiet grief", weight: 0.8, evidence: "Aftersun cuts deep." },
+      ],
+      archetypes: [
+        { label: "drifter", attraction: "Paterson's bus driver." },
+      ],
+      narrativePrefs: {
+        pacing: "slow-burn",
+        complexity: "layered",
+        tone: ["melancholic"],
+        endings: "ambiguous",
+      },
+      mediaAffinities: [
+        { format: "tv", comfort: 0.5, favorites: ["Unrelated Show"] },
+      ],
+      avoidances: [],
+    };
+    const favs = deriveFavorites(profile);
+    expect(favs).toHaveLength(1);
+    expect(favs[0]!.title).toBe("Unrelated Show");
+    expect(favs[0]!.themes).toEqual([]);
+    expect(favs[0]!.archetypes).toEqual([]);
+  });
+});
+
+describe("deriveAvoidances", () => {
+  it("emits kind: pattern entries from profile.avoidances", () => {
+    const profile: TasteProfile = {
+      themes: [],
+      archetypes: [],
+      narrativePrefs: {
+        pacing: "slow-burn",
+        complexity: "layered",
+        tone: [],
+        endings: "ambiguous",
+      },
+      mediaAffinities: [],
+      avoidances: ["Mary Sue protagonists"],
+    };
+    expect(deriveAvoidances(profile)).toEqual([
+      { description: "Mary Sue protagonists", kind: "pattern" },
+    ]);
+  });
+
+  it("emits kind: title entries from profile.dislikedTitles", () => {
+    const profile: TasteProfile = {
+      themes: [],
+      archetypes: [],
+      narrativePrefs: {
+        pacing: "slow-burn",
+        complexity: "layered",
+        tone: [],
+        endings: "ambiguous",
+      },
+      mediaAffinities: [],
+      avoidances: [],
+      dislikedTitles: ["The Last of Us"],
+    };
+    expect(deriveAvoidances(profile)).toEqual([
+      { description: "The Last of Us", kind: "title" },
+    ]);
+  });
+});
+
+function makeNode(id: string, themes: string[]): GraphNode {
+  return {
+    id,
+    title: id,
+    mediaType: "movie",
+    year: null,
+    rating: null,
+    matchScore: null,
+    status: "library",
+    themes,
+    archetypes: [],
+    source: "library",
+    primaryTheme: null,
+    explanation: null,
+  };
+}

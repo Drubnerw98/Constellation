@@ -119,7 +119,7 @@ function contentTokens(normalized: string): string[] {
  * Returns the canonical label string when matched, so downstream code
  * (cluster member lookups, edge sharing) compares against canonical labels.
  */
-function matchLabel(tag: string, labels: Set<string>): string | null {
+export function matchLabel(tag: string, labels: Set<string>): string | null {
   const norm = normalize(tag);
   if (!norm) return null;
 
@@ -182,7 +182,7 @@ function matchLabelsFromTags(tags: string[], labels: Set<string>): string[] {
  * The 2-token threshold prevents single common words like "the" or "story"
  * from triggering false matches.
  */
-function titleAppearsIn(title: string, text: string): boolean {
+export function titleAppearsIn(title: string, text: string): boolean {
   const titleNorm = normalize(title);
   const textNorm = normalize(text);
   if (textNorm.includes(titleNorm)) return true;
@@ -278,6 +278,49 @@ export function deriveFavorites(profile: TasteProfile): Favorite[] {
   );
 }
 
+/**
+ * Greedy load-balanced primary-theme assignment. Without this, the
+ * highest-weight theme absorbs every multi-tag node (a rec tagged with
+ * both [theme A weight 0.99, theme B weight 0.82] always picks A) and
+ * weaker themes end up as empty cluster glows.
+ *
+ * Sort nodes by candidate count ascending — single-theme nodes claim
+ * their seats first. On count-ties, prefer the LOWER-weight theme:
+ * high-weight themes have more candidate nodes, so they'll fill up
+ * through other nodes' choices anyway. Reserving early ties for
+ * low-weight themes ensures every theme picks up at least one resident.
+ *
+ * Mutates `node.primaryTheme` in place.
+ */
+export function assignPrimaryThemes(
+  nodes: GraphNode[],
+  themes: TasteProfile["themes"],
+): void {
+  const themeWeight = new Map(themes.map((t) => [t.label, t.weight]));
+  const memberCount = new Map<string, number>();
+  for (const t of themes) memberCount.set(t.label, 0);
+  const balancingOrder = [...nodes].sort(
+    (a, b) => a.themes.length - b.themes.length,
+  );
+  for (const node of balancingOrder) {
+    if (node.themes.length === 0) continue;
+    let best: string | null = null;
+    let bestCount = Infinity;
+    let bestWeight = Infinity;
+    for (const themeLabel of node.themes) {
+      const count = memberCount.get(themeLabel) ?? 0;
+      const weight = themeWeight.get(themeLabel) ?? 0;
+      if (count < bestCount || (count === bestCount && weight < bestWeight)) {
+        best = themeLabel;
+        bestCount = count;
+        bestWeight = weight;
+      }
+    }
+    node.primaryTheme = best;
+    if (best) memberCount.set(best, (memberCount.get(best) ?? 0) + 1);
+  }
+}
+
 export function buildGraph(
   profile: TasteProfile,
   library: LibraryItem[],
@@ -371,39 +414,7 @@ export function buildGraph(
     (n) => n.themes.length > 0 || n.archetypes.length > 0,
   );
 
-  // Greedy load-balanced primary-theme assignment. Without this, the
-  // highest-weight theme absorbs every multi-tag node (a rec tagged with
-  // both [theme A weight 0.99, theme B weight 0.82] always picks A) and
-  // weaker themes end up as empty cluster glows.
-  //
-  // Sort nodes by candidate count ascending — single-theme nodes claim
-  // their seats first. On count-ties, prefer the LOWER-weight theme:
-  // high-weight themes have more candidate nodes, so they'll fill up
-  // through other nodes' choices anyway. Reserving early ties for
-  // low-weight themes ensures every theme picks up at least one resident.
-  const themeWeight = new Map(profile.themes.map((t) => [t.label, t.weight]));
-  const memberCount = new Map<string, number>();
-  for (const t of profile.themes) memberCount.set(t.label, 0);
-  const balancingOrder = [...nodes].sort(
-    (a, b) => a.themes.length - b.themes.length,
-  );
-  for (const node of balancingOrder) {
-    if (node.themes.length === 0) continue;
-    let best: string | null = null;
-    let bestCount = Infinity;
-    let bestWeight = Infinity;
-    for (const themeLabel of node.themes) {
-      const count = memberCount.get(themeLabel) ?? 0;
-      const weight = themeWeight.get(themeLabel) ?? 0;
-      if (count < bestCount || (count === bestCount && weight < bestWeight)) {
-        best = themeLabel;
-        bestCount = count;
-        bestWeight = weight;
-      }
-    }
-    node.primaryTheme = best;
-    if (best) memberCount.set(best, (memberCount.get(best) ?? 0) + 1);
-  }
+  assignPrimaryThemes(nodes, profile.themes);
 
   const candidates: GraphEdge[] = [];
   for (let i = 0; i < nodes.length; i++) {
