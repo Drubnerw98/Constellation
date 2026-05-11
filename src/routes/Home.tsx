@@ -130,14 +130,41 @@ export function Home() {
           </div>
         </div>
       )}
-      {profileStatus.state === "loading" && (
-        <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
-          <div className="rounded-full border border-white/10 bg-[#0b0f1a]/90 px-4 py-1.5 text-[11px] text-zinc-300 backdrop-blur-md">
-            Loading your constellation…
-          </div>
-        </div>
-      )}
+      {profileStatus.state === "loading" && <LoadingOverlay />}
       <SiteFooter />
+    </div>
+  );
+}
+
+/**
+ * Cosmic loading state. Sits centered over the canvas while the user's
+ * profile is fetched. Replaces the bare "Loading your constellation…"
+ * pill with the SiteMark asterism + a tracked-caps caption underneath.
+ * The asterism is already the brand glyph; pulsing it slowly here makes
+ * the loading state read as a deliberate cosmic moment, not generic
+ * "spinner over content."
+ */
+function LoadingOverlay() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-5">
+        <div className="loading-pulse text-zinc-300">
+          <svg width="48" height="48" viewBox="0 0 32 32" fill="none" aria-hidden>
+            <line x1="4" y1="22" x2="10" y2="9" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+            <line x1="10" y1="9" x2="16" y2="18" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+            <line x1="16" y1="18" x2="22" y2="8" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+            <line x1="22" y1="8" x2="28" y2="21" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+            <circle cx="4" cy="22" r="1.4" fill="currentColor" />
+            <circle cx="10" cy="9" r="2.1" fill="currentColor" />
+            <circle cx="16" cy="18" r="2.8" fill="currentColor" />
+            <circle cx="22" cy="8" r="2.1" fill="currentColor" />
+            <circle cx="28" cy="21" r="1.4" fill="currentColor" />
+          </svg>
+        </div>
+        <p className="font-['IBM_Plex_Mono'] text-[10px] tracking-[0.28em] text-zinc-500 uppercase">
+          Charting your constellation
+        </p>
+      </div>
     </div>
   );
 }

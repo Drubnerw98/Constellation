@@ -493,14 +493,32 @@ function CenteredCaption({
   text: string;
   tone?: "neutral" | "error";
 }) {
+  const isLoading = text.toLowerCase().includes("loading");
   return (
     <div className="absolute inset-0 z-0 flex items-center justify-center px-8">
-      <div
-        className={`max-w-md text-center text-[13px] leading-relaxed ${
-          tone === "error" ? "text-rose-200/85" : "text-zinc-400"
-        }`}
-      >
-        {text}
+      <div className="flex max-w-md flex-col items-center gap-5">
+        {isLoading && (
+          <div className="loading-pulse text-zinc-300">
+            <svg width="40" height="40" viewBox="0 0 32 32" fill="none" aria-hidden>
+              <line x1="4" y1="22" x2="10" y2="9" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+              <line x1="10" y1="9" x2="16" y2="18" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+              <line x1="16" y1="18" x2="22" y2="8" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+              <line x1="22" y1="8" x2="28" y2="21" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.45" />
+              <circle cx="4" cy="22" r="1.4" fill="currentColor" />
+              <circle cx="10" cy="9" r="2.1" fill="currentColor" />
+              <circle cx="16" cy="18" r="2.8" fill="currentColor" />
+              <circle cx="22" cy="8" r="2.1" fill="currentColor" />
+              <circle cx="28" cy="21" r="1.4" fill="currentColor" />
+            </svg>
+          </div>
+        )}
+        <p
+          className={`text-center text-[13px] leading-relaxed ${
+            tone === "error" ? "text-rose-200/85" : "text-zinc-400"
+          }`}
+        >
+          {text}
+        </p>
       </div>
     </div>
   );

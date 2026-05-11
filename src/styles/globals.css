@@ -63,3 +63,95 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
+
+/* Cosmic motion layer (2026-05-10 Phase 4). The canvas is the hero in
+   Constellation; these animations give it idle life without intruding.
+   All breaths are slow + opacity-only so they GPU-composite cheaply and
+   don't fight the d3 force simulation. */
+
+/* Starfield breath — each star reads from --star-base for its rest
+   opacity and pulses between 75% and 100% of that value. Dim stars
+   barely register; bright stars get a perceptible shimmer. */
+@keyframes star-breath {
+  0%,
+  100% {
+    opacity: calc(var(--star-base, 0.7) * 0.75);
+  }
+  50% {
+    opacity: var(--star-base, 0.7);
+  }
+}
+.star-breath {
+  animation-name: star-breath;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  will-change: opacity;
+}
+
+/* Flare breath — anchor stars with diffraction spikes. Larger range
+   than the field stars since they're the visual anchors. */
+@keyframes flare-breath {
+  0%,
+  100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+.flare-breath {
+  animation-name: flare-breath;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  will-change: opacity;
+}
+
+/* Cluster panel content rise — used to stagger the title / summary /
+   anchor / reinforced-by blocks in when galaxy mode focuses a cluster.
+   The panel itself slides in via React state-driven transform; this
+   keyframe animates the content INSIDE the panel so the reveal feels
+   composed rather than wholesale. */
+@keyframes panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.panel-rise {
+  animation: panel-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: opacity, transform;
+}
+
+/* Cosmic loading pulse — the SiteMark asterism breathes slowly while
+   the user's profile is fetched. Larger range than the field stars
+   since this IS the focal element on the loading overlay. */
+@keyframes loading-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+.loading-pulse {
+  animation: loading-pulse 2400ms ease-in-out infinite;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
+/* Respect reduced motion preference: kill all canvas-life animations. */
+@media (prefers-reduced-motion: reduce) {
+  .star-breath,
+  .flare-breath,
+  .panel-rise,
+  .loading-pulse {
+    animation: none;
+  }
+}

@@ -153,8 +153,25 @@ export function StarFlares({
     >
       {flareStars.map((s, i) => {
         const len = s.r * 8;
+        // Flares get a more visible breath — they're the bright stars
+        // that anchor the visual hierarchy of the field. Slower cycle
+        // than the dim starfield to read as deliberate, not flickering.
+        const delay = `${(i * 211) % 6000}ms`;
+        const duration = `${7000 + ((i * 419) % 4000)}ms`;
         return (
-          <g key={`flare-${i}`} opacity={0.5}>
+          <g
+            key={`flare-${i}`}
+            className={prefersReducedMotion ? "" : "flare-breath"}
+            style={
+              prefersReducedMotion
+                ? { opacity: 0.5 }
+                : ({
+                    animationDelay: delay,
+                    animationDuration: duration,
+                    opacity: 0.5,
+                  } as React.CSSProperties)
+            }
+          >
             <line
               x1={s.x - len}
               y1={s.y}
@@ -197,16 +214,35 @@ export function Starfield({
         transition: prefersReducedMotion ? "none" : "opacity 1400ms ease-out",
       }}
     >
-      {stars.map((s, i) => (
-        <circle
-          key={i}
-          cx={s.x}
-          cy={s.y}
-          r={s.r}
-          fill={s.fill}
-          opacity={s.o}
-        />
-      ))}
+      {stars.map((s, i) => {
+        // Each star gets a pseudo-random phase + speed so they don't pulse
+        // in lockstep. The animation breathes opacity between 75% and 100%
+        // of the star's base opacity — dim stars breathe imperceptibly,
+        // bright stars get a visible shimmer. Scaled by base opacity via
+        // the --star-base CSS var.
+        const delay = `${(i * 137) % 5000}ms`;
+        const duration = `${5000 + ((i * 311) % 3000)}ms`;
+        return (
+          <circle
+            key={i}
+            cx={s.x}
+            cy={s.y}
+            r={s.r}
+            fill={s.fill}
+            className={prefersReducedMotion ? "" : "star-breath"}
+            style={
+              prefersReducedMotion
+                ? { opacity: s.o }
+                : ({
+                    "--star-base": s.o,
+                    animationDelay: delay,
+                    animationDuration: duration,
+                    opacity: s.o,
+                  } as React.CSSProperties)
+            }
+          />
+        );
+      })}
     </g>
   );
 }

@@ -92,7 +92,7 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
       {shown && (
         <>
           <header className="flex items-start justify-between gap-3 border-b border-white/5 px-6 pt-6 pb-5">
-            <div className="min-w-0">
+            <div key={`title-${shown.label}`} className="panel-rise min-w-0">
               <div className="font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
                 Theme
               </div>
@@ -128,7 +128,10 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
 
           <div className="flex-1 overflow-y-auto px-6 py-5 text-sm text-zinc-300">
             {theme && (
-              <section className="mb-7 space-y-4">
+              // Key by label so the content remounts and the staggered
+              // panel-rise animation re-fires when the user switches to a
+              // different cluster.
+              <section key={shown.label} className="mb-7 space-y-4">
                 {(() => {
                   const summary = theme.summary && theme.summary.trim()
                     ? theme.summary
@@ -138,12 +141,18 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
                   return (
                     <>
                       {summary && (
-                        <p className="text-[14px] leading-relaxed text-zinc-200">
+                        <p
+                          className="panel-rise text-[14px] leading-relaxed text-zinc-200"
+                          style={{ animationDelay: "60ms" }}
+                        >
                           {summary}
                         </p>
                       )}
                       {anchors.length > 0 && (
-                        <div>
+                        <div
+                          className="panel-rise"
+                          style={{ animationDelay: "160ms" }}
+                        >
                           <h3 className="mb-2 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
                             Anchored in
                           </h3>
@@ -160,7 +169,10 @@ export function ClusterPanel({ cluster, profile, onClose }: Props) {
                         </div>
                       )}
                       {reinforcedBy.length > 0 && (
-                        <div>
+                        <div
+                          className="panel-rise"
+                          style={{ animationDelay: "260ms" }}
+                        >
                           <h3 className="mb-2 font-mono text-[10px] tracking-[0.18em] text-zinc-500 uppercase">
                             Reinforced by
                           </h3>

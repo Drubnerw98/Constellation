@@ -48,9 +48,12 @@ export function ClusterGlows({
               opacity={dim ? 0.18 : 1}
               style={{
                 pointerEvents: "none",
+                // Decisive ease + slower duration so glow growth on hover
+                // reads as deliberate rather than springy. The cluster IS
+                // the visual subject so its transition is the longest.
                 transition: prefersReducedMotion
                   ? "none"
-                  : "opacity 220ms ease, r 220ms ease",
+                  : "opacity 380ms cubic-bezier(0.2, 0.8, 0.2, 1), r 380ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }}
             />
             <circle
