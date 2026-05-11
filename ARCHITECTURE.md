@@ -150,7 +150,7 @@ Four routes, intentionally minimal:
 | `/diff` | `<Diff>` (animated profile-version diff) | `<Landing>` |
 | `*`  | redirect to `/` | redirect to `/` |
 
-**Why `/demo` exists:** for portfolio viewers who don't want to sign in. The sample profile is deliberately curated (`data/sampleProfile.ts`) — a coherent fictional taste that exercises every visual layer (cluster glow, edges, mixed media types, mixed statuses). The URL is shareable.
+**Why `/demo` exists:** for portfolio viewers who don't want to sign in. The sample profile is deliberately curated (`data/sampleProfile.ts`) — a coherent fictional taste that exercises every visual layer (constellation lines, cluster glow on focus, edges on selection, anti-stars at the perimeter, mixed media types, mixed statuses). The URL is shareable.
 
 **Why `<SignedIn>`/`<SignedOut>` instead of redirecting:** Clerk renders nothing during auth-loading. A redirect-based gate would flash the wrong page during that ~100ms window. Conditional render keeps the screen blank until auth resolves, which reads as intentional.
 
@@ -236,30 +236,46 @@ D3 force simulation tuned for ~30-70 nodes. Five forces, ordered by importance:
 
 ## 7. Render layers (SVG composition)
 
-The SVG tree is built in stacking order — earlier layers paint underneath later ones:
+The SVG tree is built in stacking order — earlier layers paint underneath later ones. The 2026-05-10 Phase 4 rework reordered the cluster identity layers: the cluster-glow bubbles dropped from primary visual to a focus-state indicator, and a new constellation-lines layer (per-cluster minimum spanning tree) became the primary carrier of cluster shape.
 
 ```
 <svg>
   <defs>
-    <radialGradient id="cluster-glow-N"/> ×8
+    <radialGradient id="cluster-grad-N"/> ×N        {/* per-theme glow gradients */}
+    <radialGradient id="nebula-*"/>                  {/* twilight / aurora / teal / warm */}
+    <radialGradient id="vignette"/>                  {/* edge darkening */}
     <filter id="node-halo"/>
     <filter id="node-glow-strong"/>
+    <filter id="label-shadow"/>                      {/* dark halo behind cluster labels */}
   </defs>
 
   <g className="zoom-layer" transform={d3.zoomTransform}>
-    <g className="starfield">          {/* 124 ambient bg stars, color-tinted */}
-    <g className="clusters">            {/* radial-gradient glows + invisible hit areas */}
-    <g className="cluster-labels">     {/* radial-positioned labels with stroke-bg */}
-    <g className="node-halos">          {/* blurred glow circles behind nodes */}
-    <g className="edges">               {/* quadratic-bezier paths, theme-tinted */}
-    <g className="nodes">               {/* per-format glyphs in <g class=node> */}
+    <g className="nebula">                {/* 10 large gradient blobs, cosmic atmosphere */}
+    <g className="star-flares">           {/* anchor stars with diffraction spikes */}
+    <g className="starfield">             {/* 1200 stars, opacity-breathing */}
+    <g className="anti-stars">            {/* disliked titles as perimeter X marks */}
+    <g className="clusters">              {/* glow gradient circles (faint by default,
+                                              brighten on hover/focus) + hit areas */}
+    <g className="constellation-lines">   {/* per-cluster MST, primary cluster visual */}
+    <g className="edges">                 {/* bezier paths for the focused node only */}
+    <g className="node-halos">            {/* blurred glow circles behind nodes */}
+    <g className="nodes">                 {/* per-format glyphs */}
+    <g className="cluster-labels">        {/* labels painted on top so node drift
+                                              never buries them */}
   </g>
 
   {selectedNode && <circle/>}            {/* dashed selection ring (outside zoom layer) */}
   {hoveredNode && <foreignObject/>}      {/* tooltip (outside zoom layer) */}
+  <Vignette/>                            {/* fixed-viewport edge darken */}
   <Reset button>                          {/* HTML overlay */}
 </svg>
 ```
+
+**Constellation lines as primary cluster visual.** Each theme's members are connected by a minimum spanning tree (Kruskal's with union-find, computed once 1.2s post-mount in `useEffect`, then frozen — `computeClusterMST` in `canvas/helpers.ts`). The line endpoints track current node positions every render so they follow the slow drift of the force-sim, but the topology stays stable so the figure shape doesn't twitch. This reads as a star chart: each theme is a connected asterism rather than a colored bubble. The previous always-visible cluster-glow bubble created a "blob chart" feel; recessing it solved that.
+
+**Dedup against cross-cluster edges.** When an MST line connects the same pair of nodes as a cross-cluster bezier edge (typical when two nodes share more than one theme), the bezier skips drawing unless the edge is actively highlighted. A shared `mstPairs: Set<string>` of normalized pair keys flows from the parent into `<Edges>` for the check.
+
+**Cluster glow as focus-state indicator.** The cluster gradient circles still render but default to ~0.10 opacity. Hover bumps to 0.55, focus (galaxy mode) to 1.0. Now a hint of "where the cluster lives" without competing with the constellation lines as the primary carrier of cluster identity.
 
 **Why selection ring + tooltip live OUTSIDE the zoom layer:** they should NOT scale with zoom. Their position is computed via `transform.applyX(node.x)` so they track the zoomed node position, but their size and stroke width stay constant in screen pixels.
 
@@ -267,9 +283,11 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
 
 **Per-format glyphs:** circle (movie), rounded square (tv), hexagon (anime), diamond (game), portrait rect (manga), tall narrow rect (book). Sizes are tuned so each shape has roughly equal visual area — variation reads as identity, not size. Sized further by signal strength (rating for library, matchScore for recs) in a narrow 0.85-1.2× range.
 
-**Cluster labels: radial outward positioning.** Adjacent labels at the bottom of every cluster overlapped each other badly. Now each label is projected along the unit vector from canvas center → cluster, past the glow's outer edge, with `text-anchor` swinging start/middle/end based on horizontal position. Long labels wrap to 2 lines via `wrapClusterLabel`.
+**Cluster labels: anchored below the cluster centroid.** The earlier radial-from-canvas-center formula stacked labels on the same axis when clusters sat in the same direction, producing visible label-on-label overwrites. Labels now anchor at `cluster.centerY + cluster.radius * 1.4` (flipping above for clusters near the bottom edge). Different cluster X positions naturally give different label X positions. Painted in the last SVG layer so node drift can't bury the text; backed by an additive `label-shadow` SVG filter + 6px stroke for legibility against any layer beneath.
 
-**Galaxy mode + ClusterPanel:** when the user clicks a cluster label or zooms in past the focus threshold, the canvas enters "galaxy mode" — the focused cluster takes visual prominence, others dim. The canvas mirrors the focused-cluster state up via `onFocusedClusterChange`, and `ConstellationView` renders a `ClusterPanel` (slide-in from the left, mirror to the node `DetailPanel` on the right) showing the theme's AI-generated `evidence` text + member count. Closing the panel calls `clearClusterFocus()` on the canvas handle, which resets zoom + clears focus.
+**Edges: focus-only.** Cross-cluster bezier edges render only for the focused (selected or hovered) node. The previous "show all connections" toggle was removed in the Phase 4 pass because the full-mesh view fought the constellation lines for primacy and never read well. When a node is focused: its specific edges pop on top, the rest of the canvas dims, and MST collapses to only the focused node's primary-theme cluster so the user sees a clean view of that node's web.
+
+**Galaxy mode + ClusterPanel:** when the user clicks a cluster label or zooms in past the focus threshold, the canvas enters "galaxy mode" — the focused cluster's glow brightens, others dim. The canvas mirrors the focused-cluster state up via `onFocusedClusterChange`, and `ConstellationView` renders a `ClusterPanel` (slide-in from the left, mirror to the node `DetailPanel` on the right) showing the theme's summary text, anchor titles, and reinforcing titles. The panel's content blocks stagger in via a `panel-rise` keyframe (60/160/260ms delays) so the reveal feels composed rather than wholesale. Closing the panel calls `clearClusterFocus()` on the canvas handle, which resets zoom + clears focus.
 
 **Why cluster-level rationale, not per-item:** the previous "Why this fits" surface in the node detail panel only had data for ~20% of items (consumed library + recs); rendering it inconsistently read as broken on the empty 80%. Theme `evidence` exists for every cluster, so cluster-level rationale is consistent. The per-item `explanation`/`fitNote` data still flows through the type chain — kept for a possible future hover/tooltip surface — but isn't currently displayed.
 
@@ -358,13 +376,15 @@ The client sends `Authorization: Bearer <getToken()>` to `/api/profile/export`. 
 
 Things flagged but NOT decided. Surfacing them so a future contributor (or future-me) doesn't quietly resolve them by accident.
 
-### 9a. Cluster layout — resolved (force-directed)
+### 9a. Cluster layout — resolved (spiral seed + force-resolved overlaps)
 
-Was: uniform circular orbit. Now: force-directed placement in a small auxiliary D3 simulation (in `lib/graph.ts:placeClusters`). Each theme is a body with weight-derived charge (heavier themes repel more), collide enforces minimum spacing equal to render radius + margin, and a weak center force keeps the constellation centered. Initial positions seeded from a hash of theme labels — same profile produces the same layout across reloads.
+Originally: uniform circular orbit. Then: pure force-directed placement with random initial positions. Now (2026-05-10 Phase 4): **Fibonacci spiral seeding ordered by theme weight**, then a short force-sim that only resolves collision overlaps.
 
-Cluster size has two modes (toggle in FilterBar):
-- `weight` (default): radius = 45 + theme.weight × 55. Reflects how strongly the theme matters in the user's profile.
-- `members`: radius = 38 + min(memberCount, 8) × 9. Reflects how many titles populate the cluster.
+Themes are ranked by weight descending. The heaviest theme is placed at the canvas center; each subsequent theme is positioned on a golden-angle spiral with radius growing as `sqrt(rank) × spiralScale`. The force-sim then runs for 180 ticks (down from 400) with reduced charge (-1200 - w×1200, down from -1800 - w×1800) and a very weak center pull (0.01) — just enough to bump overlapping cluster glows apart without unwinding the spiral's heavy-themes-anchor-inward character.
+
+The defensible design call: **weight has visual gravity.** A dominant theme reads as the anchor of the constellation, peripheral themes orbit outward. A reviewer flipping between two profiles sees the visual barycenter shift with the underlying weight distribution. Replaces the previous force-only layout where cluster positions read as arbitrary geometric spacing.
+
+Cluster size: `radius = 45 + theme.weight × 55`. The previous "weight vs members" toggle was removed — cluster radius no longer carries visual weight (the glow bubble is hidden by default; constellation lines and node tints carry cluster identity now), and the radius only governs label-distance and the (faint) glow size.
 
 ### 9b. Density (20-40 nodes) — addressed
 
