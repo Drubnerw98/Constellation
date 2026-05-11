@@ -10,18 +10,11 @@
  */
 export function SiteMark() {
   return (
-    <div className="pointer-events-none flex flex-col items-end gap-0.5 px-2">
-      {/* Eyebrow caption — shared across the three sibling apps in their
-          chrome so the family is legible at a glance. */}
-      <span className="hidden font-['IBM_Plex_Mono'] text-[9px] tracking-[0.28em] text-zinc-500 uppercase sm:inline">
+    <div className="pointer-events-none flex items-center gap-2.5 px-2">
+      <Asterism size={22} />
+      <span className="hidden font-['IBM_Plex_Sans'] text-[15px] font-light tracking-[0.04em] text-zinc-200 sm:inline">
         Constellation
       </span>
-      <div className="flex items-center gap-2.5">
-        <Asterism size={22} />
-        <span className="hidden font-['IBM_Plex_Sans'] text-[15px] font-light tracking-[0.04em] text-zinc-200 sm:inline">
-          Constellation
-        </span>
-      </div>
     </div>
   );
 }
