@@ -358,6 +358,18 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               matchesFormat={matchesFormat}
               prefersReducedMotion={prefersReducedMotion}
             />
+            <NodeHalos {...nodeLayerProps} />
+            <Nodes
+              {...nodeLayerProps}
+              onNodeEnter={handleNodeEnter}
+              onNodeLeave={handleNodeLeave}
+              onNodeClick={handleNodeClick}
+            />
+            {/* Labels intentionally render AFTER the nodes layer so the
+                cluster name is always visible. Before this, force-sim could
+                drift a node over a label and bury the text behind the node
+                circle. Keeping them on top resolves it for any cluster
+                density. */}
             <ClusterLabels
               clusters={clusters}
               focusedClusterLabel={focusedClusterLabel}
@@ -367,13 +379,6 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               onFocusCluster={flyToCluster}
               onClusterEnter={handleClusterEnter}
               onClusterLeave={handleClusterLeave}
-            />
-            <NodeHalos {...nodeLayerProps} />
-            <Nodes
-              {...nodeLayerProps}
-              onNodeEnter={handleNodeEnter}
-              onNodeLeave={handleNodeLeave}
-              onNodeClick={handleNodeClick}
             />
           </g>
 

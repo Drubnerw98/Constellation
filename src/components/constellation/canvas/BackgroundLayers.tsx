@@ -63,13 +63,14 @@ export function Defs({ clusters }: { clusters: ThemeCluster[] }) {
         <stop offset="50%" stopColor="#9a6a3a" stopOpacity={0.06} />
         <stop offset="100%" stopColor="#9a6a3a" stopOpacity={0} />
       </radialGradient>
-      {/* Vignette — radial darkening that pulls the eye inward toward the
-          constellation. Transparent through the inner 45% so cluster glows
-          aren't dimmed; ramps to 80% bg darkness at the corners. */}
-      <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
-        <stop offset="35%" stopColor="#05060a" stopOpacity={0} />
-        <stop offset="75%" stopColor="#05060a" stopOpacity={0.35} />
-        <stop offset="100%" stopColor="#05060a" stopOpacity={0.8} />
+      {/* Vignette — very subtle radial darkening, only at the outer 15%
+          of the canvas. Previous stops created a visible band where the
+          gradient transition crossed cluster glows; this version stays
+          transparent through 75% of the radius and ramps gently to a
+          modest darkness only at the extreme corners. */}
+      <radialGradient id="vignette" cx="50%" cy="50%" r="90%">
+        <stop offset="75%" stopColor="#05060a" stopOpacity={0} />
+        <stop offset="100%" stopColor="#05060a" stopOpacity={0.45} />
       </radialGradient>
       {/* Label shadow — soft dark halo painted behind cluster labels so they
           punch through nodes when force-sim drifts a member on top of the

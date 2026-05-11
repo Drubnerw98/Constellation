@@ -113,7 +113,11 @@ export function ClusterLabels({
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         const ux = dx / dist;
         const uy = dy / dist;
-        const labelDist = dist + c.radius + 70;
+        // Push labels further out from cluster edges (was +70). Combined
+        // with the reorder to render labels above nodes, this gets text
+        // off the dense node area entirely while still reading as
+        // attached to its cluster.
+        const labelDist = dist + c.radius + 95;
         // Top margin reserves space for the chrome strip (SiteMark + Compare
         // versions link + UserButton) which has no opaque backdrop and would
         // otherwise read as cluster-label-through-text on initial render.
@@ -149,7 +153,7 @@ export function ClusterLabels({
             dominantBaseline="middle"
             fill={c.color}
             opacity={opacity}
-            fontSize={isFocused || isHovered ? 17 : 15}
+            fontSize={isFocused || isHovered ? 19 : 17}
             fontStyle="italic"
             fontWeight={400}
             className="cursor-pointer"
