@@ -13,6 +13,7 @@ import {
   NebulaLayer,
   Starfield,
   StarFlares,
+  Vignette,
 } from "./canvas/BackgroundLayers";
 import { wrapClusterLabel } from "./canvas/helpers";
 import { nodeGlyph } from "./canvas/glyph";
@@ -400,6 +401,7 @@ export function DiffCanvas({ diff, scrub, prefersReducedMotion }: Props) {
           positioned={positionedClusters}
           scrub={scrubLerp}
         />
+        <Vignette />
       </svg>
     </div>
   );
@@ -535,13 +537,16 @@ function DiffClusterLabels({ positioned, scrub }: DiffClusterLabelsProps) {
               fontSize={15}
               fontStyle="italic"
               fontWeight={400}
+              filter="url(#label-shadow)"
               style={{
                 fontFamily:
                   '"Iowan Old Style", Charter, Georgia, "Times New Roman", serif',
                 letterSpacing: "0.08em",
                 paintOrder: "stroke fill",
                 stroke: "#05060a",
-                strokeWidth: 4,
+                // Stroke 6 + shadow filter so the label reads when force-
+                // sim drifts a node onto it. See Clusters.tsx for rationale.
+                strokeWidth: 6,
                 strokeLinejoin: "round",
                 textDecoration: badge === "removed" ? "line-through" : "none",
               }}

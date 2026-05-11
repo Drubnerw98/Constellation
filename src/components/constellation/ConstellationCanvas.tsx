@@ -16,6 +16,7 @@ import {
   NebulaLayer,
   Starfield,
   StarFlares,
+  Vignette,
 } from "./canvas/BackgroundLayers";
 import { ClusterGlows, ClusterLabels } from "./canvas/Clusters";
 import { Edges, NodeHalos, Nodes } from "./canvas/Graph";
@@ -386,6 +387,9 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
             }
           />
           <NodeTooltip node={hoveredNode} transform={transform} />
+          {/* Vignette sits outside the zoom-layer so it stays anchored to
+              the viewport regardless of pan/zoom — the porthole effect. */}
+          <Vignette />
         </svg>
 
         <ResetButton

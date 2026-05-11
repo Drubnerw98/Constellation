@@ -153,6 +153,7 @@ export function ClusterLabels({
             fontStyle="italic"
             fontWeight={400}
             className="cursor-pointer"
+            filter="url(#label-shadow)"
             onClick={(e) => {
               e.stopPropagation();
               onFocusCluster(c.label);
@@ -165,7 +166,11 @@ export function ClusterLabels({
               letterSpacing: "0.08em",
               paintOrder: "stroke fill",
               stroke: "#05060a",
-              strokeWidth: 4,
+              // Stroke bumped from 4 to 6 (2026-05-10) so the label punches
+              // through when force-sim pushes a node directly over the text
+              // in dense clusters. Combined with the label-shadow filter,
+              // labels stay readable regardless of node overlay.
+              strokeWidth: 6,
               strokeLinejoin: "round",
               transition: prefersReducedMotion
                 ? "none"
