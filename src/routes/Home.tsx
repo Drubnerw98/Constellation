@@ -75,7 +75,7 @@ export function Home() {
         return {
           ...sampleFallback,
           bannerMessage:
-            "No Resonance profile yet — showing the sample. Finish onboarding in Resonance to see yours.",
+            "No Resonance profile yet. Showing the sample. Finish onboarding in Resonance to see yours.",
         };
       case "error":
         return {

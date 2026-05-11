@@ -67,7 +67,7 @@ export function Demo() {
       </div>
       <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
         <div className="rounded-full border border-white/10 bg-[#0b0f1a]/85 px-4 py-1.5 text-[11px] text-zinc-400 backdrop-blur-md">
-          Demo constellation — a fictional taste profile
+          Demo constellation · fictional taste profile
         </div>
       </div>
     </div>

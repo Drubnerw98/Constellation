@@ -163,7 +163,7 @@ export function Diff() {
         if (cancelled) return;
         const message =
           err instanceof ApiError && err.status === 404
-            ? "Version unavailable — it may have been deleted."
+            ? "Version unavailable. It may have been deleted."
             : err instanceof ApiError
               ? err.message
               : "Resonance is unreachable";
@@ -289,7 +289,7 @@ function DiffSurface({
   }
   if (state.kind === "single-version") {
     return (
-      <CenteredCaption text="Profile has only one version — diff appears once you've had at least one refinement." />
+      <CenteredCaption text="Profile has only one version. Diff appears once you've had at least one refinement." />
     );
   }
   if (state.kind === "error") {
@@ -406,7 +406,7 @@ function VersionPicker({
             disabled={v.id === disabledId}
             className="bg-[#0b0f1a]"
           >
-            {fmtDate(v.createdAt)} — {triggerBadge(v.trigger)}
+            {fmtDate(v.createdAt)} · {triggerBadge(v.trigger)}
           </option>
         ))}
       </select>

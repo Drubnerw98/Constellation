@@ -354,7 +354,7 @@ export function AntiStars({
       {antiStars.map((a, i) => (
         <g key={i} transform={`translate(${a.x},${a.y})`}>
           <circle cx={0} cy={0} r={22} fill="transparent">
-            <title>{`✗ ${a.title} — outside your taste`}</title>
+            <title>{`✗ ${a.title} · outside your taste`}</title>
           </circle>
           <line
             x1={-7}

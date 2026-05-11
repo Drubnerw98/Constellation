@@ -34,10 +34,10 @@ export function Landing() {
             </h1>
 
             <p className="mt-8 max-w-xl text-[15px] leading-relaxed text-zinc-400">
-              Constellation reads your Resonance profile — the themes you
-              respond to, the archetypes you keep returning to — and renders
-              them as a galaxy. Stars are titles you've engaged with. Clusters
-              are the themes that pull them together.
+              Constellation reads your Resonance profile and renders it as
+              a galaxy. Stars are the titles you've engaged with. Clusters
+              are the themes that pull them together. The closer two stars
+              sit, the more themes they share.
             </p>
 
             <div className="mt-12 flex flex-wrap items-center gap-5">
@@ -78,7 +78,7 @@ export function Landing() {
                 Companion to
               </p>
               <p className="mt-2 text-[12px] leading-relaxed text-zinc-500">
-                <span className="text-zinc-300">Resonance</span> — an AI
+                <span className="text-zinc-300">Resonance</span>, an AI
                 recommendation engine that builds your taste profile from what
                 you watch, read, and play.
               </p>
