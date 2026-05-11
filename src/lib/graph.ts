@@ -536,29 +536,42 @@ function placeClusters(
 ): ClusterPlacement[] {
   if (themes.length === 0) return [];
 
-  // Deterministic seed from the concatenated theme labels — same profile
-  // → same layout across reloads, but a new theme shifts things.
-  let seed = 1337;
-  for (const t of themes) {
-    for (let i = 0; i < t.label.length; i++) {
-      seed = ((seed * 31) ^ t.label.charCodeAt(i)) | 0;
-    }
-  }
-  const rand = () => {
-    seed = ((seed * 1664525) + 1013904223) | 0;
-    return ((seed >>> 0) % 1_000_000) / 1_000_000;
-  };
+  // Fibonacci spiral seeding ordered by theme weight. The heaviest theme
+  // sits at the canvas center; each subsequent theme is placed on a golden-
+  // angle spiral with radius growing as sqrt(index). This produces an
+  // organic non-grid layout where dominant themes anchor inward and lighter
+  // themes orbit outward — and the layout has narrative meaning we can
+  // defend ("weight has visual gravity") rather than being arbitrary.
+  //
+  // Force-sim runs afterward only to resolve cluster-glow collisions;
+  // tick count is intentionally low so the spiral character is preserved.
+  const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+  const spiralScale = Math.min(CANVAS_W, CANVAS_H) * 0.22;
 
-  const placement: ClusterPlacement[] = themes.map((t) => ({
-    label: t.label,
-    weight: t.weight,
-    radius: radiusFor(t),
-    // Wider seed (0.85 vs prior 0.55) so initial positions span almost
-    // the whole canvas. Combined with weaker center pull, clusters
-    // settle into a more spread-out organic layout instead of bunching.
-    x: CANVAS_W / 2 + (rand() - 0.5) * CANVAS_W * 0.85,
-    y: CANVAS_H / 2 + (rand() - 0.5) * CANVAS_H * 0.85,
-  }));
+  // Build a rank for each theme by weight (descending). The heaviest gets
+  // spiral index 0 (canvas center); lightest gets the outermost slot.
+  // Stable sort by original index when weights tie so layout is
+  // deterministic across reloads of the same profile.
+  const spiralRankByOriginal = new Map<number, number>();
+  themes
+    .map((t, i) => ({ weight: t.weight, i }))
+    .sort((a, b) => b.weight - a.weight || a.i - b.i)
+    .forEach((entry, spiralRank) => {
+      spiralRankByOriginal.set(entry.i, spiralRank);
+    });
+
+  const placement: ClusterPlacement[] = themes.map((t, originalIdx) => {
+    const spiralIdx = spiralRankByOriginal.get(originalIdx) ?? 0;
+    const angle = spiralIdx * GOLDEN_ANGLE;
+    const r = Math.sqrt(spiralIdx) * spiralScale;
+    return {
+      label: t.label,
+      weight: t.weight,
+      radius: radiusFor(t),
+      x: CANVAS_W / 2 + Math.cos(angle) * r,
+      y: CANVAS_H / 2 + Math.sin(angle) * r,
+    };
+  });
 
   const sim = d3
     .forceSimulation<ClusterPlacement>(placement)
@@ -566,30 +579,27 @@ function placeClusters(
       "charge",
       d3
         .forceManyBody<ClusterPlacement>()
-        .strength((d) => -1800 - d.weight * 1800),
+        .strength((d) => -1200 - d.weight * 1200),
     )
     .force(
       "collide",
       d3
         .forceCollide<ClusterPlacement>()
-        // Larger margin (60 vs 28) — clusters end up with visible
-        // negative space between them instead of glow-touching.
         .radius((d) => d.radius + 60)
         .strength(0.95),
     )
     .force(
       "center",
-      // Weaker center pull (0.02 vs 0.04) lets clusters drift toward the
-      // edges of the canvas instead of getting squished into the middle.
-      d3.forceCenter(CANVAS_W / 2, CANVAS_H / 2).strength(0.02),
+      // Very weak center pull — the spiral seeding already anchors heavy
+      // themes inward; we don't want force-sim to unwind that ordering.
+      d3.forceCenter(CANVAS_W / 2, CANVAS_H / 2).strength(0.01),
     )
     .stop();
 
-  // Manual ticks (sim.stop() prevents auto-tick) plus per-tick clamp
-  // so clusters stay inside canvas bounds even if forces would launch
-  // them outside. More ticks (400 vs 320) so the layout fully settles
-  // with the stronger repulsion + weaker center.
-  for (let i = 0; i < 400; i++) {
+  // Fewer ticks (180 vs the prior 400) so the spiral character survives
+  // collision resolution. The sim's job here is to bump overlapping
+  // clusters apart without re-running the whole layout from scratch.
+  for (let i = 0; i < 180; i++) {
     sim.tick();
     for (const c of placement) {
       const m = c.radius + 24;
