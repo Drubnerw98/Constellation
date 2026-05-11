@@ -115,16 +115,23 @@ export function ClusterLabels({
   onClusterEnter: (label: string) => void;
   onClusterLeave: (label: string) => void;
 }) {
-  // Greedy angular placement. Pure vertical pushing couldn't resolve
-  // clusters stacked in the same vertical band — both labels wanted the
-  // same Y zone and the margins limited how far they could push. New
-  // approach: each label picks a position AROUND its cluster's perimeter
-  // by trying the outward-radial direction first, then rotated
-  // alternatives. Heaviest clusters claim space first so important
-  // labels get the best slot.
+  // Greedy angular placement with multi-axis scoring. Each cluster tries
+  // ~17 candidate angles around its perimeter and picks the one with the
+  // best score across THREE penalties:
+  //
+  //   1. Label-label collision (already-placed labels) — hardest weight.
+  //   2. Cluster overlap (the label's box sits over another cluster's
+  //      glow/nodes — what was happening before this rewrite).
+  //   3. Off-canvas (box would spill past the safe area) — soft weight,
+  //      and we also bias toward the outward-radial direction so labels
+  //      naturally fan out from the spiral.
+  //
+  // Heaviest clusters claim space first so the dominant labels get the
+  // best slot. Labels stay at a fixed offset from their cluster so the
+  // label-to-cluster association is unambiguous.
   const lineHeight = 16;
-  const labelGap = 16;
-  const topMargin = 80;
+  const labelGap = 24;
+  const topMargin = 70;
   const sideMargin = 60;
   const bottomMargin = 60;
   const cx = CANVAS_W / 2;
@@ -140,22 +147,36 @@ export function ClusterLabels({
     textAnchor: "start" | "middle" | "end";
   };
 
-  // Rectangle-intersect with a buffer on each axis. Bounding box is
-  // centered at (x, y) — text-anchor doesn't affect collision because
-  // halfWidth measures the box from its center.
-  const intersects = (a: Placed, b: Placed): boolean =>
+  const intersectsLabel = (a: Placed, b: Placed): boolean =>
     Math.abs(a.x - b.x) < a.halfWidth + b.halfWidth + 10 &&
     Math.abs(a.y - b.y) < (a.height + b.height) / 2 + 8;
 
-  // Process clusters heaviest-first so the dominant label gets the best
-  // position. Lighter clusters' labels flex around what's already placed.
+  // True when a label's bounding box overlaps a cluster's glow circle.
+  // Uses circle-rect distance: the closest point on the rect to the
+  // cluster center is within the cluster radius (plus a small pad).
+  const overlapsClusterGlow = (
+    x: number,
+    y: number,
+    halfWidth: number,
+    halfHeight: number,
+    other: ThemeCluster,
+    pad: number,
+  ): boolean => {
+    const closestX = Math.max(x - halfWidth, Math.min(x + halfWidth, other.centerX));
+    const closestY = Math.max(y - halfHeight, Math.min(y + halfHeight, other.centerY));
+    const dx = closestX - other.centerX;
+    const dy = closestY - other.centerY;
+    const r = other.radius + pad;
+    return dx * dx + dy * dy < r * r;
+  };
+
+  // Process clusters heaviest-first.
   const order = clusters
     .map((c, i) => ({ c, i }))
     .sort((a, b) => b.c.weight - a.c.weight);
 
-  // Angular candidates: outward-radial direction first, then ±15°, ±30°,
-  // ±45°, ±60°, ±90°, ±120°, ±150°, 180°. Eighteen options around the
-  // cluster — enough to find clear space in any realistic profile.
+  // Angular candidates: outward direction first, then ±15°, ±30°, ±45°,
+  // ±60°, ±90°, ±120°, ±150°, 180°. Seventeen options around the cluster.
   const angleDeltas: number[] = [0];
   for (let step = 1; step <= 8; step++) {
     angleDeltas.push((step * Math.PI) / 12);
@@ -174,29 +195,30 @@ export function ClusterLabels({
 
     const outwardAngle = Math.atan2(c.centerY - cy, c.centerX - cx);
 
-    let chosen: Placed | null = null;
-    let fallback: Placed | null = null;
-    let fallbackCollisions = Infinity;
+    let bestScore = Infinity;
+    let bestCandidate: Placed | null = null;
 
     for (const delta of angleDeltas) {
       const angle = outwardAngle + delta;
       const cosA = Math.cos(angle);
       const sinA = Math.sin(angle);
-      // Offset is cluster radius + a small gap, padded by halfWidth /
-      // halfHeight in the relevant axis so the label's nearest edge sits
-      // outside the cluster glow rather than overlapping it. The padding
-      // tapers smoothly as the angle rotates between horizontal and
-      // vertical via |cosA| / |sinA|.
+      // Offset along the chosen direction. The padding terms
+      // (halfWidth * |cos|, halfHeight * |sin|) keep the nearest edge of
+      // the label box outside the cluster glow regardless of angle.
       const offset =
         c.radius +
         labelGap +
         halfWidth * Math.abs(cosA) +
         halfHeight * Math.abs(sinA);
-      let x = c.centerX + cosA * offset;
-      let y = c.centerY + sinA * offset;
-      // Clamp center so the bounding box stays inside the safe canvas.
-      x = Math.max(sideMargin + halfWidth, Math.min(CANVAS_W - sideMargin - halfWidth, x));
-      y = Math.max(topMargin + halfHeight, Math.min(CANVAS_H - bottomMargin - halfHeight, y));
+      const x = c.centerX + cosA * offset;
+      const y = c.centerY + sinA * offset;
+
+      // Off-canvas penalty (in pixels of overflow on each axis).
+      const offLeft = Math.max(0, sideMargin + halfWidth - x);
+      const offRight = Math.max(0, x + halfWidth - (CANVAS_W - sideMargin));
+      const offTop = Math.max(0, topMargin + halfHeight - y);
+      const offBottom = Math.max(0, y + halfHeight - (CANVAS_H - bottomMargin));
+      const offCanvasPenalty = offLeft + offRight + offTop + offBottom;
 
       const textAnchor: "start" | "middle" | "end" =
         Math.abs(cosA) > 0.6
@@ -216,21 +238,36 @@ export function ClusterLabels({
         textAnchor,
       };
 
-      let collisions = 0;
+      let labelCollisions = 0;
       for (const p of placedSparse) {
-        if (p && intersects(p, candidate)) collisions++;
+        if (p && intersectsLabel(p, candidate)) labelCollisions++;
       }
-      if (collisions === 0) {
-        chosen = candidate;
-        break;
+
+      let clusterOverlaps = 0;
+      for (const other of clusters) {
+        if (other === c) continue;
+        if (overlapsClusterGlow(x, y, halfWidth, halfHeight, other, 8))
+          clusterOverlaps++;
       }
-      if (collisions < fallbackCollisions) {
-        fallbackCollisions = collisions;
-        fallback = candidate;
+
+      // Score: label-on-label is the worst (10000), cluster overlap next
+      // (4000 each), off-canvas pixels are linear (2 per px), and a
+      // small angular-deviation bonus prefers the outward direction so
+      // the figure reads as a coherent radial layout.
+      const score =
+        labelCollisions * 10000 +
+        clusterOverlaps * 4000 +
+        offCanvasPenalty * 2 +
+        Math.abs(delta) * 3;
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestCandidate = candidate;
+        if (score < Math.abs(delta) * 3 + 0.5) break; // perfect fit
       }
     }
 
-    placedSparse[i] = chosen ?? fallback!;
+    placedSparse[i] = bestCandidate!;
   }
 
   const placedByLabel = new Map(
