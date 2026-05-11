@@ -18,7 +18,8 @@ import {
   StarFlares,
   Vignette,
 } from "./canvas/BackgroundLayers";
-import { ClusterGlows, ClusterLabels } from "./canvas/Clusters";
+import { ClusterGlows, HoverClusterLabel } from "./canvas/Clusters";
+import { ClusterLegend } from "./ClusterLegend";
 import {
   ConstellationLines,
   Edges,
@@ -453,20 +454,17 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               onNodeLeave={handleNodeLeave}
               onNodeClick={handleNodeClick}
             />
-            {/* Labels intentionally render AFTER the nodes layer so the
-                cluster name is always visible. Before this, force-sim could
-                drift a node over a label and bury the text behind the node
-                circle. Keeping them on top resolves it for any cluster
-                density. */}
-            <ClusterLabels
-              clusters={clusters}
-              focusedClusterLabel={focusedClusterLabel}
-              hoveredClusterLabel={hoveredClusterLabel}
-              inGalaxyMode={inGalaxyMode}
-              prefersReducedMotion={prefersReducedMotion}
-              onFocusCluster={flyToCluster}
-              onClusterEnter={handleClusterEnter}
-              onClusterLeave={handleClusterLeave}
+            {/* Hovered cluster label — only one ever renders at a time
+                since hover is exclusive. Replaces the always-visible
+                cluster labels (placement on arbitrary profiles was a
+                bottomless problem). The corner legend handles at-a-glance
+                discovery; this is the in-context reveal. */}
+            <HoverClusterLabel
+              cluster={
+                hoveredClusterLabel
+                  ? (clusterByLabel.get(hoveredClusterLabel) ?? null)
+                  : null
+              }
             />
             {/* In-canvas hover labels for the focused node + its connected
                 neighbors. Inside the zoom layer so titles track pan/zoom
@@ -492,6 +490,16 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               the viewport regardless of pan/zoom — the porthole effect. */}
           <Vignette />
         </svg>
+
+        <ClusterLegend
+          clusters={clusters}
+          focusedClusterLabel={focusedClusterLabel}
+          hoveredClusterLabel={hoveredClusterLabel}
+          inGalaxyMode={inGalaxyMode}
+          onFocusCluster={flyToCluster}
+          onClusterEnter={handleClusterEnter}
+          onClusterLeave={handleClusterLeave}
+        />
 
         <ResetButton
           visible={isZoomed || inGalaxyMode}

@@ -43,6 +43,7 @@ constellation/
 │   │   │       ├── Clusters.tsx           # ClusterGlows + ClusterLabels
 │   │   │       ├── Graph.tsx              # Edges + NodeHalos + Nodes
 │   │   │       └── Overlays.tsx           # SelectedRing + HoverLabels + ResetButton
+│   │   ├── ClusterLegend.tsx              # corner overlay: color swatch + theme list
 │   │   └── controls/
 │   │       ├── FilterBar.tsx              # format toggles
 │   │       └── SearchInput.tsx            # title search with pan-to-node
@@ -260,15 +261,20 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
     <g className="edges">                 {/* bezier paths for the focused node only */}
     <g className="node-halos">            {/* blurred glow circles behind nodes */}
     <g className="nodes">                 {/* per-format glyphs */}
-    <g className="cluster-labels">        {/* labels painted on top so node drift
-                                              never buries them; collision-resolved */}
+    <HoverClusterLabel/>                  {/* one cluster's label appears
+                                              only while that cluster is
+                                              hovered — no collisions to
+                                              resolve since one at a time */}
     <HoverLabels/>                        {/* in-canvas hover labels for focused
                                               node + connected neighbors */}
   </g>
 
   {selectedNode && <circle/>}            {/* dashed selection ring (outside zoom layer) */}
   <Vignette/>                            {/* fixed-viewport edge darken */}
-  <Reset button>                          {/* HTML overlay */}
+  <ClusterLegend/>                        {/* HTML overlay top-right: color
+                                              swatch + theme name list,
+                                              clickable to flyToCluster */}
+  <Reset button>                          {/* HTML overlay bottom-left */}
 </svg>
 ```
 
@@ -282,7 +288,11 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
 
 **Hover labels (`HoverLabels` in `canvas/Overlays.tsx`)** render INSIDE the zoom layer as plain SVG `<text>`, anchored just to the right of each node (or to the left when the node sits past 75% of canvas width). The hovered or selected node gets a primary-weight label; every connected neighbor surfaces its title at the same time at a quieter weight, so a node's web is scannable in-place without opening the side panel. Painted in the last sublayer of the zoom group so labels sit on top of nodes and constellation lines. Replaces the previous corner-snap `<foreignObject>` tooltip, which floated to canvas corners and read as detached when the hovered node was anywhere except near an edge.
 
-**Cluster-label collision pass.** `ClusterLabels` pre-computes each label's anchor position (below the cluster centroid, flipped above for clusters near the bottom edge) and then runs a short iterative repulsion sweep: pairs with overlapping bounding boxes nudge apart vertically (3 passes is plenty at typical cluster counts of 6-8). Stops cluster names from stacking on each other when the spiral seed places two clusters in roughly the same vertical band.
+**Cluster identity: hover label + corner legend, NO always-visible on-canvas labels.** Earlier passes tried always-visible labels with vertical-push collision, then angular placement with multi-axis scoring. Both failed on arbitrary profile shapes: labels either stacked on top of each other in dense vertical bands or drifted far from their clusters to avoid neighbors' glows. The current model splits the job:
+
+- **`ClusterLegend`** (HTML overlay, top-right) — color swatch + theme name list, always visible. Answers the at-a-glance "what are my themes?" question once per page load. Clicking a row mirrors clicking the cluster's glow on the canvas (calls `flyToCluster`); hovering a row highlights the corresponding cluster via the same `hoveredClusterLabel` pathway the canvas uses.
+- **`HoverClusterLabel`** (SVG inside the zoom layer) — exactly one cluster's serif-italic name renders next to that cluster while it's hovered. One label at a time means there's nothing to collide with, so we can anchor it tightly to the cluster (`cluster.radius * 1.75 + labelGap` below, flipped above near the bottom edge) and have it scale with zoom.
+- **Bigger click target** — the cluster hit zone scaled from a fixed 55px to `cluster.radius` so the entire visible cluster area triggers `flyToCluster` reliably. The previous tight hit zone was a sneaky discoverability tax.
 
 **Why split cluster glow into visual + hit circles:** cluster glow circles have `pointerEvents:none` and a large radius (the visual). A separate, smaller (`min(radius, 110)px`) invisible circle handles hover hit-detection. Without this split, mousemoves between adjacent clusters' overlapping glows triggered constant hover-flicker.
 
