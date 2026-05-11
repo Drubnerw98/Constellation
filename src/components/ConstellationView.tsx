@@ -7,7 +7,7 @@ import { ClusterPanel } from "./constellation/ClusterPanel";
 import { DetailPanel } from "./constellation/DetailPanel";
 import { FilterBar } from "./controls/FilterBar";
 import { SearchInput } from "./controls/SearchInput";
-import { buildGraph, type ClusterScaleMode } from "../lib/graph";
+import { buildGraph } from "../lib/graph";
 import type { MediaType } from "../types/graph";
 import type {
   Avoidance,
@@ -46,23 +46,9 @@ export function ConstellationView({
   favorites,
   avoidances,
 }: Props) {
-  const [clusterScaleMode, setClusterScaleMode] =
-    useState<ClusterScaleMode>("weight");
-  // Default to "selected" — declutter mode. The full edge mesh is visually
-  // busy at this node count; one-title-at-a-time is the better default for
-  // exploring a constellation.
-  const [showAllConnections, setShowAllConnections] = useState(false);
-
   const graph = useMemo(
-    () =>
-      buildGraph(
-        profile,
-        library,
-        recommendations,
-        favorites,
-        clusterScaleMode,
-      ),
-    [profile, library, recommendations, favorites, clusterScaleMode],
+    () => buildGraph(profile, library, recommendations, favorites),
+    [profile, library, recommendations, favorites],
   );
 
   const canvasRef = useRef<ConstellationCanvasHandle>(null);
@@ -133,7 +119,6 @@ export function ConstellationView({
         onSelect={handleSelect}
         activeFormats={activeFormats}
         onFocusedClusterChange={setFocusedClusterLabel}
-        showAllConnections={showAllConnections}
         avoidances={avoidances}
       />
       <SearchInput graph={graph} onPick={handleSearchPick} />
@@ -141,10 +126,6 @@ export function ConstellationView({
         activeFormats={activeFormats}
         onToggle={toggleFormat}
         onReset={resetFormats}
-        clusterScaleMode={clusterScaleMode}
-        onClusterScaleModeChange={setClusterScaleMode}
-        showAllConnections={showAllConnections}
-        onShowAllConnectionsChange={setShowAllConnections}
       />
       <ClusterPanel
         cluster={focusedCluster}

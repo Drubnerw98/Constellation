@@ -16,14 +16,10 @@ interface ConstellationLinesProps {
   focusedClusterLabel: string | null;
   hoveredClusterLabel: string | null;
   inGalaxyMode: boolean;
-  /** When the user has the "show all connections" toggle on, the cross-
-   * cluster edge web takes over as primary visual; MST lines yield to it
-   * so the two layers don't compete. */
-  showAllConnections: boolean;
-  /** When the user is in "Edges: Selected" mode AND a node is focused
-   * (selected or hovered), MST lines collapse to ONLY that node's primary
-   * cluster — the rest of the constellation hides so the user can see the
-   * specific node's web cleanly. Null when no node is focused. */
+  /** When a node is focused (selected or hovered), MST lines collapse to
+   * ONLY that node's primary cluster — the rest of the constellation
+   * hides so the user can see the specific node's web cleanly. Null
+   * when no node is focused. */
   focusedNodeClusterLabel: string | null;
   prefersReducedMotion: boolean;
 }
@@ -48,19 +44,16 @@ export function ConstellationLines({
   focusedClusterLabel,
   hoveredClusterLabel,
   inGalaxyMode,
-  showAllConnections,
   focusedNodeClusterLabel,
   prefersReducedMotion,
 }: ConstellationLinesProps) {
   return (
     <g className="constellation-lines" style={{ pointerEvents: "none" }}>
       {Array.from(linesByCluster.entries()).flatMap(([label, edges]) => {
-        // In "Edges: Selected" mode, only the focused node's primary
-        // cluster keeps its MST visible. Every other cluster's lines
-        // hide entirely so the user gets the clean focus view they
-        // toggled into.
-        const nodeFocusActive =
-          !showAllConnections && focusedNodeClusterLabel !== null;
+        // When a node is focused (selected or hovered), only its primary
+        // cluster keeps its MST visible. Other clusters' lines hide so the
+        // user sees the focused node's web cleanly.
+        const nodeFocusActive = focusedNodeClusterLabel !== null;
         if (nodeFocusActive && label !== focusedNodeClusterLabel) {
           return [];
         }
@@ -75,16 +68,9 @@ export function ConstellationLines({
             : dim
               ? 0.08
               : 0.38;
-        // When the cross-cluster web is the active display mode, recess
-        // the constellation lines so the two layers don't fight. The
-        // figure shape is still visible (~0.18), but cross-cluster takes
-        // the primary role.
-        if (showAllConnections && !isFocused && !isHovered) {
-          opacity = 0.18;
-        }
-        // When the user has node focus active in "Edges: Selected" mode,
-        // the surviving MST (only the focused node's cluster) shows at
-        // strong opacity so it reads as the active context.
+        // When the user has node focus active, the surviving MST (only the
+        // focused node's cluster) shows at strong opacity so it reads as
+        // the active context.
         if (nodeFocusActive) {
           opacity = 0.6;
         }
@@ -121,7 +107,6 @@ interface EdgesProps {
   selectedNodeId: string | null;
   hoveredNodeId: string | null;
   hoveredClusterLabel: string | null;
-  showAllConnections: boolean;
   inGalaxyMode: boolean;
   clusterByLabel: Map<string, ThemeCluster>;
   isEdgeActive: (s: string, t: string) => boolean;
@@ -139,17 +124,17 @@ interface EdgesProps {
 }
 
 /**
- * Edge layer — quadratic-bezier paths between connected nodes. Edge color
- * tints with the strongest shared theme; opacity reflects active / dimmed /
- * cluster-focus / format-filter state. When `showAllConnections` is false,
- * only edges touching the focused (selected or hovered) node render at all.
+ * Edge layer — quadratic-bezier paths between connected nodes for the
+ * focused node only. Only edges touching the focused (selected or hovered)
+ * node render at all; the full-mesh view was removed in the 2026-05-10
+ * Phase 4 DNA change because it fought the constellation lines for
+ * visual primacy.
  */
 export function Edges({
   edges,
   selectedNodeId,
   hoveredNodeId,
   hoveredClusterLabel,
-  showAllConnections,
   inGalaxyMode,
   clusterByLabel,
   isEdgeActive,
@@ -166,11 +151,9 @@ export function Edges({
         const s = e.source as GraphNode;
         const t = e.target as GraphNode;
         if (typeof s !== "object" || typeof t !== "object") return null;
-        if (!showAllConnections) {
-          const focusId = selectedNodeId ?? hoveredNodeId;
-          if (focusId === null || (s.id !== focusId && t.id !== focusId)) {
-            return null;
-          }
+        const focusId = selectedNodeId ?? hoveredNodeId;
+        if (focusId === null || (s.id !== focusId && t.id !== focusId)) {
+          return null;
         }
         const active = isEdgeActive(s.id, t.id);
         const dimmed = isEdgeDimmed(s.id, t.id);

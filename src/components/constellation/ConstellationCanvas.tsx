@@ -51,8 +51,6 @@ interface Props {
    * cluster label, zooms in past the threshold, or exits galaxy mode.
    * View consumes this to render the cluster info panel. */
   onFocusedClusterChange?: (label: string | null) => void;
-  /** When false, only edges connected to the selected node are rendered. */
-  showAllConnections?: boolean;
   /** Disliked titles render as anti-stars at the perimeter. Patterns aren't
    * surfaced visually. */
   avoidances?: Avoidance[];
@@ -80,7 +78,6 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       onSelect,
       activeFormats,
       onFocusedClusterChange,
-      showAllConnections = true,
       avoidances = [],
     },
     ref,
@@ -416,7 +413,6 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               focusedClusterLabel={focusedClusterLabel}
               hoveredClusterLabel={hoveredClusterLabel}
               inGalaxyMode={inGalaxyMode}
-              showAllConnections={showAllConnections}
               focusedNodeClusterLabel={focusedNodeClusterLabel}
               prefersReducedMotion={prefersReducedMotion}
             />
@@ -425,7 +421,6 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               selectedNodeId={selectedNodeId}
               hoveredNodeId={hoveredNodeId}
               hoveredClusterLabel={hoveredClusterLabel}
-              showAllConnections={showAllConnections}
               inGalaxyMode={inGalaxyMode}
               clusterByLabel={clusterByLabel}
               isEdgeActive={isEdgeActive}

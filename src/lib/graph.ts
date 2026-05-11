@@ -9,7 +9,6 @@ import type {
 import type { Graph, GraphEdge, GraphNode, ThemeCluster } from "../types/graph";
 import { colorForThemeIndex } from "./colors";
 
-export type ClusterScaleMode = "weight" | "members";
 
 const CANVAS_W = 1200;
 const CANVAS_H = 800;
@@ -339,7 +338,6 @@ export function buildGraph(
   library: LibraryItem[],
   recommendations: RecommendationItem[],
   favorites: Favorite[] = [],
-  clusterScaleMode: ClusterScaleMode = "weight",
 ): Graph {
   const themeLabels = new Set(profile.themes.map((t) => t.label));
   const archetypeLabels = new Set(profile.archetypes.map((a) => a.label));
@@ -481,23 +479,13 @@ export function buildGraph(
     edges.push(e);
   }
 
-  // Member counts (used by both layout-mass and the optional
-  // members-mode cluster sizing).
-  const memberCountByLabel = new Map<string, number>();
-  for (const theme of profile.themes) {
-    memberCountByLabel.set(
-      theme.label,
-      nodes.filter((n) => n.themes.includes(theme.label)).length,
-    );
-  }
-
+  // Cluster radius derived from theme weight: 45px (low weight) to 100px
+  // (top weight). The previous toggle between "weight" and "members" was
+  // removed in the 2026-05-10 Phase 4 DNA change since cluster radius no
+  // longer carries visual weight — the constellation lines and node tint
+  // do that work now, and the radius only sets label distance and the
+  // (hidden by default) glow size.
   const clusterRadiusFor = (theme: TasteProfile["themes"][number]): number => {
-    if (clusterScaleMode === "members") {
-      const m = memberCountByLabel.get(theme.label) ?? 0;
-      // 1 member → 45px, 8+ members → ~110px. Same visual range as weight
-      // mode so the toggle doesn't blow up the canvas scale.
-      return 38 + Math.min(m, 8) * 9;
-    }
     return 45 + theme.weight * 55;
   };
 

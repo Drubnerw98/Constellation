@@ -1,5 +1,4 @@
 import type { MediaType } from "../../types/graph";
-import type { ClusterScaleMode } from "../../lib/graph";
 
 const FORMATS: { id: MediaType; label: string }[] = [
   { id: "movie", label: "Movies" },
@@ -14,29 +13,19 @@ interface Props {
   activeFormats: Set<MediaType>;
   onToggle: (format: MediaType) => void;
   onReset: () => void;
-  clusterScaleMode: ClusterScaleMode;
-  onClusterScaleModeChange: (mode: ClusterScaleMode) => void;
-  showAllConnections: boolean;
-  onShowAllConnectionsChange: (value: boolean) => void;
 }
 
 /**
- * Top-center control bar. Two distinct surfaces side by side:
- *   1. Format filters (MEDIA), toggleable
- *   2. View settings (VIEW) — cluster scale + connection visibility
- *
- * Replaces the previous everything-is-a-rounded-pill layout. Borders +
- * dividers communicate structure; mono caption labels signal "settings"
- * vs the sans format labels.
+ * Top-center control bar. Just the format filters; the previous "View"
+ * group (cluster scale + edge visibility toggles) was removed after the
+ * 2026-05-10 DNA change made both irrelevant — cluster radius no longer
+ * carries visual weight now that glow bubbles are hidden by default, and
+ * the all-edges view never read well alongside the constellation lines.
  */
 export function FilterBar({
   activeFormats,
   onToggle,
   onReset,
-  clusterScaleMode,
-  onClusterScaleModeChange,
-  showAllConnections,
-  onShowAllConnectionsChange,
 }: Props) {
   const allActive = FORMATS.every((f) => activeFormats.has(f.id));
   return (
@@ -68,26 +57,6 @@ export function FilterBar({
           </button>
         )}
       </Group>
-
-      <Group caption="View">
-        <Toggle
-          label="scale"
-          value={clusterScaleMode === "weight" ? "weight" : "titles"}
-          onClick={() =>
-            onClusterScaleModeChange(
-              clusterScaleMode === "weight" ? "members" : "weight",
-            )
-          }
-          title="Cluster size: theme weight (default) vs. number of titles in the cluster"
-        />
-        <span aria-hidden className="self-stretch border-l border-white/10" />
-        <Toggle
-          label="edges"
-          value={showAllConnections ? "all" : "selected"}
-          onClick={() => onShowAllConnectionsChange(!showAllConnections)}
-          title="Show all connections vs. only the connections of the selected title"
-        />
-      </Group>
     </div>
   );
 }
@@ -106,28 +75,5 @@ function Group({
       </span>
       {children}
     </div>
-  );
-}
-
-function Toggle({
-  label,
-  value,
-  onClick,
-  title,
-}: {
-  label: string;
-  value: string;
-  onClick: () => void;
-  title: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className="pointer-events-auto cursor-pointer rounded-sm px-2 py-1 font-mono text-[10px] tracking-[0.12em] text-zinc-500 uppercase transition-colors hover:text-zinc-300"
-    >
-      {label} <span className="text-zinc-200">{value}</span>
-    </button>
   );
 }
