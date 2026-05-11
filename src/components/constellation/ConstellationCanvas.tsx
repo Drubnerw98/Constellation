@@ -222,6 +222,13 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
     const focusNeighbors = focusId
       ? (neighbors.get(focusId) ?? new Set<string>())
       : new Set<string>();
+    // Primary-theme cluster of the focused node — drives the
+    // "Edges: Selected" MST collapse so only the relevant constellation
+    // remains visible while the user inspects a single node.
+    const focusedNodeClusterLabel =
+      focusId !== null
+        ? (nodeById.get(focusId)?.primaryTheme ?? null)
+        : null;
     const hoveredNode = hoveredNodeId
       ? (nodes.find((n) => n.id === hoveredNodeId) ?? null)
       : null;
@@ -410,6 +417,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               hoveredClusterLabel={hoveredClusterLabel}
               inGalaxyMode={inGalaxyMode}
               showAllConnections={showAllConnections}
+              focusedNodeClusterLabel={focusedNodeClusterLabel}
               prefersReducedMotion={prefersReducedMotion}
             />
             <Edges

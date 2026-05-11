@@ -20,6 +20,11 @@ interface ConstellationLinesProps {
    * cluster edge web takes over as primary visual; MST lines yield to it
    * so the two layers don't compete. */
   showAllConnections: boolean;
+  /** When the user is in "Edges: Selected" mode AND a node is focused
+   * (selected or hovered), MST lines collapse to ONLY that node's primary
+   * cluster — the rest of the constellation hides so the user can see the
+   * specific node's web cleanly. Null when no node is focused. */
+  focusedNodeClusterLabel: string | null;
   prefersReducedMotion: boolean;
 }
 
@@ -44,11 +49,21 @@ export function ConstellationLines({
   hoveredClusterLabel,
   inGalaxyMode,
   showAllConnections,
+  focusedNodeClusterLabel,
   prefersReducedMotion,
 }: ConstellationLinesProps) {
   return (
     <g className="constellation-lines" style={{ pointerEvents: "none" }}>
       {Array.from(linesByCluster.entries()).flatMap(([label, edges]) => {
+        // In "Edges: Selected" mode, only the focused node's primary
+        // cluster keeps its MST visible. Every other cluster's lines
+        // hide entirely so the user gets the clean focus view they
+        // toggled into.
+        const nodeFocusActive =
+          !showAllConnections && focusedNodeClusterLabel !== null;
+        if (nodeFocusActive && label !== focusedNodeClusterLabel) {
+          return [];
+        }
         const color = colorByCluster.get(label) ?? "#9aa4b2";
         const isFocused = label === focusedClusterLabel;
         const isHovered = !inGalaxyMode && label === hoveredClusterLabel;
@@ -66,6 +81,12 @@ export function ConstellationLines({
         // the primary role.
         if (showAllConnections && !isFocused && !isHovered) {
           opacity = 0.18;
+        }
+        // When the user has node focus active in "Edges: Selected" mode,
+        // the surviving MST (only the focused node's cluster) shows at
+        // strong opacity so it reads as the active context.
+        if (nodeFocusActive) {
+          opacity = 0.6;
         }
         return edges.map((edge, i) => {
           const s = nodeById.get(edge.sourceId);
