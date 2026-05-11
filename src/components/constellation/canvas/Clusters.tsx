@@ -142,37 +142,65 @@ export function ClusterLabels({
     if (y - halfBlock < topMargin) y = topMargin + halfBlock;
     if (y + halfBlock > CANVAS_H - 60) y = CANVAS_H - 60 - halfBlock;
     const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
-    // Rough width estimate at 17px italic serif: ~9px per character. Good
-    // enough for collision detection; we don't need exact text metrics.
-    const halfWidth = (longest * 9) / 2;
+    // Width estimate for 17px italic serif (Iowan Old Style). Italic serif
+    // runs wide; 11px-per-character matches measured widths better than the
+    // 9px we used originally. The collision pass over-reserves slightly,
+    // which is the safer direction.
+    const halfWidth = (longest * 11) / 2;
     return {
       cluster: c,
       lines,
       halfBlock,
       x: c.centerX,
       y,
+      // Visual height: the wrapped block (halfBlock × 2) plus one full line
+      // for ascender / descender room.
       height: halfBlock * 2 + lineHeight,
       halfWidth,
     };
   });
-  // Iterative pass: nudge labels apart when their boxes overlap. Two
-  // sweeps is usually plenty at typical cluster counts (6-8).
-  for (let pass = 0; pass < 3; pass++) {
+  // Iterative collision pass. Sort labels by Y, walk neighbors, push pairs
+  // apart vertically when their bounding boxes overlap. Two subtleties make
+  // this more robust than the naive "push each by half the deficit":
+  //
+  // 1. If one label is clamped at a top/bottom margin, the other absorbs
+  //    the share its neighbor couldn't take. Without this, the pair stays
+  //    overlapping by half the original deficit.
+  // 2. Early exit when no label moved in a pass — common case is one or
+  //    two collisions, and we don't want to keep iterating once stable.
+  for (let pass = 0; pass < 6; pass++) {
     placed.sort((a, b) => a.y - b.y);
+    let moved = false;
     for (let i = 1; i < placed.length; i++) {
       const a = placed[i - 1]!;
       const b = placed[i]!;
       const dx = Math.abs(a.x - b.x);
-      const horizontalOverlap = dx < a.halfWidth + b.halfWidth + 6;
+      const horizontalOverlap = dx < a.halfWidth + b.halfWidth + 14;
       if (!horizontalOverlap) continue;
-      const need = (a.height + b.height) / 2 + 4;
+      const need = (a.height + b.height) / 2 + 10;
       const dy = b.y - a.y;
       if (dy < need) {
-        const push = (need - dy) / 2;
-        a.y = Math.max(topMargin + a.halfBlock, a.y - push);
-        b.y = Math.min(CANVAS_H - 60 - b.halfBlock, b.y + push);
+        const deficit = need - dy;
+        const aMinY = topMargin + a.halfBlock;
+        const bMaxY = CANVAS_H - 60 - b.halfBlock;
+        const aRoom = a.y - aMinY;
+        const bRoom = bMaxY - b.y;
+        const half = deficit / 2;
+        let aPush = Math.min(half, aRoom);
+        let bPush = Math.min(half, bRoom);
+        // If A couldn't take its share (hit top margin), shift the unused
+        // amount onto B's push, and vice versa. Capped by the other side's
+        // remaining room so we don't push past margins.
+        if (aPush < half) bPush = Math.min(bPush + (half - aPush), bRoom);
+        if (bPush < half) aPush = Math.min(aPush + (half - bPush), aRoom);
+        if (aPush > 0.01 || bPush > 0.01) {
+          a.y -= aPush;
+          b.y += bPush;
+          moved = true;
+        }
       }
     }
+    if (!moved) break;
   }
   const placedByLabel = new Map(placed.map((p) => [p.cluster.label, p]));
 
