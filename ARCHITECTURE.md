@@ -218,9 +218,9 @@ D3 force simulation tuned for ~30-70 nodes. Five forces, ordered by importance:
 
 | Force | Strength | Role |
 |-------|----------|------|
-| `forceX/Y` to primary cluster | 0.55 | The main attractor — pulls each node to its assigned cluster center |
-| `forceCollide(NODE_RADIUS+8)` | 0.95 | Prevents nodes from stacking on top of each other |
-| `forceManyBody` | -420 | Charge repulsion — gives clusters internal spacing |
+| `forceX/Y` to primary cluster | 0.38 | The main attractor — pulls each node toward its assigned cluster center without crushing it to the middle, so members spread to fill the cluster radius |
+| `forceCollide(NODE_RADIUS+14)` | 0.95 | Prevents nodes from stacking on top of each other; widened from +8 so members have visible breathing room within the cluster |
+| `forceManyBody` | -560 | Charge repulsion — gives clusters internal spacing; bumped from -420 alongside the lighter center pull |
 | `forceLink` distance(140 + (1-s)*160) | 0.015 + s*0.05 | Weak link force — present so connected nodes drift slightly toward each other, but doesn't override cluster pull |
 | Tick boundary clamp | — | Manual: zero velocity at canvas edges so nodes don't escape |
 

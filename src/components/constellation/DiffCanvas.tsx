@@ -63,13 +63,16 @@ function settleSimulation(
         .distance((d) => 140 + (1 - d.strength) * 160)
         .strength((d) => 0.005 + d.strength * 0.02),
     )
-    .force("charge", d3.forceManyBody<GraphNode>().strength(-420))
+    // Tuned 2026-05-10 to match the live canvas: nodes spread within
+    // clusters rather than crushing toward center. See hooks.ts for the
+    // same change in the live force-sim.
+    .force("charge", d3.forceManyBody<GraphNode>().strength(-560))
     .force(
       "collide",
-      d3.forceCollide<GraphNode>().radius(NODE_RADIUS + 8).strength(0.95),
+      d3.forceCollide<GraphNode>().radius(NODE_RADIUS + 14).strength(0.95),
     )
-    .force("x", d3.forceX<GraphNode>((d) => targetFor(d).x).strength(0.55))
-    .force("y", d3.forceY<GraphNode>((d) => targetFor(d).y).strength(0.55))
+    .force("x", d3.forceX<GraphNode>((d) => targetFor(d).x).strength(0.38))
+    .force("y", d3.forceY<GraphNode>((d) => targetFor(d).y).strength(0.38))
     .alpha(1)
     .alphaDecay(0.025)
     .alphaTarget(0)

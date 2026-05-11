@@ -48,15 +48,20 @@ export function useForceSimulation(
           // toward each other but doesn't override the cluster pull.
           .strength((d) => 0.005 + d.strength * 0.02),
       )
-      .force("charge", d3.forceManyBody<GraphNode>().strength(-420))
+      // Tuned 2026-05-10 Phase 4: nodes were crushing toward cluster
+      // center, reading as tight pentagons instead of spread constellations.
+      // Charge bumped from -420 → -560 (more repulsion between members),
+      // collide widened from NODE_RADIUS+8 → NODE_RADIUS+14 (more breathing
+      // room), and center pull dropped from 0.55 → 0.38 so the cluster
+      // glow has room to host nodes spread across its radius rather than
+      // clumped at the middle.
+      .force("charge", d3.forceManyBody<GraphNode>().strength(-560))
       .force(
         "collide",
-        d3.forceCollide<GraphNode>().radius(NODE_RADIUS + 8).strength(0.95),
+        d3.forceCollide<GraphNode>().radius(NODE_RADIUS + 14).strength(0.95),
       )
-      // Strong center pull (0.55) so nodes stay visibly inside their
-      // cluster glow instead of drifting toward edge-connected partners.
-      .force("x", d3.forceX<GraphNode>((d) => targetFor(d).x).strength(0.55))
-      .force("y", d3.forceY<GraphNode>((d) => targetFor(d).y).strength(0.55))
+      .force("x", d3.forceX<GraphNode>((d) => targetFor(d).x).strength(0.38))
+      .force("y", d3.forceY<GraphNode>((d) => targetFor(d).y).strength(0.38))
       .alpha(1)
       .alphaDecay(prefersReducedMotion ? 0.05 : 0.02)
       // Drift-on-rest: gently ticks forever so nodes orbit slowly within
