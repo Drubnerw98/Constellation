@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-@import url("https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
+/* Fira faces are kept for the canvas labels and existing body chrome.
+   IBM Plex Mono + Plex Sans are loaded for the cross-app chrome (header
+   / footer / EcosystemSwitcher) per the 2026-05-10 harmonization so the
+   three siblings share a wordmark family. */
+@import url("https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap");
 
 /* Register the font + color tokens with Tailwind so they're available as
    utility classes (font-display, font-mono, text-muted, etc.). */

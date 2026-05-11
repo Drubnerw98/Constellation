@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
 import { ConstellationView } from "../components/ConstellationView";
+import { SiteFooter } from "../components/SiteFooter";
 import { SiteMark } from "../components/SiteMark";
 import {
   sampleProfile,
@@ -136,6 +137,7 @@ export function Home() {
           </div>
         </div>
       )}
+      <SiteFooter />
     </div>
   );
 }
