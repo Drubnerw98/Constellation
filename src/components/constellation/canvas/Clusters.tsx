@@ -115,13 +115,20 @@ export function ClusterLabels({
   onClusterEnter: (label: string) => void;
   onClusterLeave: (label: string) => void;
 }) {
-  // Pre-compute every label's anchor position once per render, then run
-  // a quick collision-resolution pass so labels that landed on top of
-  // each other in the original geometry nudge apart vertically.
+  // Greedy angular placement. Pure vertical pushing couldn't resolve
+  // clusters stacked in the same vertical band — both labels wanted the
+  // same Y zone and the margins limited how far they could push. New
+  // approach: each label picks a position AROUND its cluster's perimeter
+  // by trying the outward-radial direction first, then rotated
+  // alternatives. Heaviest clusters claim space first so important
+  // labels get the best slot.
   const lineHeight = 16;
-  const labelGap = 28;
+  const labelGap = 16;
   const topMargin = 80;
-  const sideMargin = 80;
+  const sideMargin = 60;
+  const bottomMargin = 60;
+  const cx = CANVAS_W / 2;
+  const cy = CANVAS_H / 2;
   type Placed = {
     cluster: ThemeCluster;
     lines: string[];
@@ -130,93 +137,115 @@ export function ClusterLabels({
     y: number;
     height: number;
     halfWidth: number;
+    textAnchor: "start" | "middle" | "end";
   };
-  const placed: Placed[] = clusters.map((c) => {
+
+  // Rectangle-intersect with a buffer on each axis. Bounding box is
+  // centered at (x, y) — text-anchor doesn't affect collision because
+  // halfWidth measures the box from its center.
+  const intersects = (a: Placed, b: Placed): boolean =>
+    Math.abs(a.x - b.x) < a.halfWidth + b.halfWidth + 10 &&
+    Math.abs(a.y - b.y) < (a.height + b.height) / 2 + 8;
+
+  // Process clusters heaviest-first so the dominant label gets the best
+  // position. Lighter clusters' labels flex around what's already placed.
+  const order = clusters
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => b.c.weight - a.c.weight);
+
+  // Angular candidates: outward-radial direction first, then ±15°, ±30°,
+  // ±45°, ±60°, ±90°, ±120°, ±150°, 180°. Eighteen options around the
+  // cluster — enough to find clear space in any realistic profile.
+  const angleDeltas: number[] = [0];
+  for (let step = 1; step <= 8; step++) {
+    angleDeltas.push((step * Math.PI) / 12);
+    angleDeltas.push(-(step * Math.PI) / 12);
+  }
+  angleDeltas.push(Math.PI);
+
+  const placedSparse: (Placed | undefined)[] = new Array(clusters.length);
+  for (const { c, i } of order) {
     const lines = wrapClusterLabel(c.label);
     const halfBlock = ((lines.length - 1) * lineHeight) / 2;
-    const wantBelow = c.centerY < CANVAS_H * 0.72;
-    const baseY = wantBelow
-      ? c.centerY + c.radius + labelGap
-      : c.centerY - c.radius - labelGap;
-    let y = baseY;
-    if (y - halfBlock < topMargin) y = topMargin + halfBlock;
-    if (y + halfBlock > CANVAS_H - 60) y = CANVAS_H - 60 - halfBlock;
     const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
-    // Width estimate for 17px italic serif (Iowan Old Style). Italic serif
-    // runs wide; 11px-per-character matches measured widths better than the
-    // 9px we used originally. The collision pass over-reserves slightly,
-    // which is the safer direction.
     const halfWidth = (longest * 11) / 2;
-    return {
-      cluster: c,
-      lines,
-      halfBlock,
-      x: c.centerX,
-      y,
-      // Visual height: the wrapped block (halfBlock × 2) plus one full line
-      // for ascender / descender room.
-      height: halfBlock * 2 + lineHeight,
-      halfWidth,
-    };
-  });
-  // Iterative collision pass. Sort labels by Y, walk neighbors, push pairs
-  // apart vertically when their bounding boxes overlap. Two subtleties make
-  // this more robust than the naive "push each by half the deficit":
-  //
-  // 1. If one label is clamped at a top/bottom margin, the other absorbs
-  //    the share its neighbor couldn't take. Without this, the pair stays
-  //    overlapping by half the original deficit.
-  // 2. Early exit when no label moved in a pass — common case is one or
-  //    two collisions, and we don't want to keep iterating once stable.
-  for (let pass = 0; pass < 6; pass++) {
-    placed.sort((a, b) => a.y - b.y);
-    let moved = false;
-    for (let i = 1; i < placed.length; i++) {
-      const a = placed[i - 1]!;
-      const b = placed[i]!;
-      const dx = Math.abs(a.x - b.x);
-      const horizontalOverlap = dx < a.halfWidth + b.halfWidth + 14;
-      if (!horizontalOverlap) continue;
-      const need = (a.height + b.height) / 2 + 10;
-      const dy = b.y - a.y;
-      if (dy < need) {
-        const deficit = need - dy;
-        const aMinY = topMargin + a.halfBlock;
-        const bMaxY = CANVAS_H - 60 - b.halfBlock;
-        const aRoom = a.y - aMinY;
-        const bRoom = bMaxY - b.y;
-        const half = deficit / 2;
-        let aPush = Math.min(half, aRoom);
-        let bPush = Math.min(half, bRoom);
-        // If A couldn't take its share (hit top margin), shift the unused
-        // amount onto B's push, and vice versa. Capped by the other side's
-        // remaining room so we don't push past margins.
-        if (aPush < half) bPush = Math.min(bPush + (half - aPush), bRoom);
-        if (bPush < half) aPush = Math.min(aPush + (half - bPush), aRoom);
-        if (aPush > 0.01 || bPush > 0.01) {
-          a.y -= aPush;
-          b.y += bPush;
-          moved = true;
-        }
+    const height = halfBlock * 2 + lineHeight;
+    const halfHeight = height / 2;
+
+    const outwardAngle = Math.atan2(c.centerY - cy, c.centerX - cx);
+
+    let chosen: Placed | null = null;
+    let fallback: Placed | null = null;
+    let fallbackCollisions = Infinity;
+
+    for (const delta of angleDeltas) {
+      const angle = outwardAngle + delta;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      // Offset is cluster radius + a small gap, padded by halfWidth /
+      // halfHeight in the relevant axis so the label's nearest edge sits
+      // outside the cluster glow rather than overlapping it. The padding
+      // tapers smoothly as the angle rotates between horizontal and
+      // vertical via |cosA| / |sinA|.
+      const offset =
+        c.radius +
+        labelGap +
+        halfWidth * Math.abs(cosA) +
+        halfHeight * Math.abs(sinA);
+      let x = c.centerX + cosA * offset;
+      let y = c.centerY + sinA * offset;
+      // Clamp center so the bounding box stays inside the safe canvas.
+      x = Math.max(sideMargin + halfWidth, Math.min(CANVAS_W - sideMargin - halfWidth, x));
+      y = Math.max(topMargin + halfHeight, Math.min(CANVAS_H - bottomMargin - halfHeight, y));
+
+      const textAnchor: "start" | "middle" | "end" =
+        Math.abs(cosA) > 0.6
+          ? cosA > 0
+            ? "start"
+            : "end"
+          : "middle";
+
+      const candidate: Placed = {
+        cluster: c,
+        lines,
+        halfBlock,
+        x,
+        y,
+        height,
+        halfWidth,
+        textAnchor,
+      };
+
+      let collisions = 0;
+      for (const p of placedSparse) {
+        if (p && intersects(p, candidate)) collisions++;
+      }
+      if (collisions === 0) {
+        chosen = candidate;
+        break;
+      }
+      if (collisions < fallbackCollisions) {
+        fallbackCollisions = collisions;
+        fallback = candidate;
       }
     }
-    if (!moved) break;
+
+    placedSparse[i] = chosen ?? fallback!;
   }
-  const placedByLabel = new Map(placed.map((p) => [p.cluster.label, p]));
+
+  const placedByLabel = new Map(
+    placedSparse
+      .filter((p): p is Placed => p !== undefined)
+      .map((p) => [p.cluster.label, p]),
+  );
 
   return (
     <g className="cluster-labels">
       {clusters.map((c) => {
         const p = placedByLabel.get(c.label)!;
-        const { lines, halfBlock } = p;
+        const { lines, halfBlock, textAnchor } = p;
         const labelX = p.x;
         const labelY = p.y;
-        const textAnchor: "start" | "middle" | "end" =
-          labelX < sideMargin
-            ? "start"
-            : labelX > CANVAS_W - sideMargin
-              ? "end"
-              : "middle";
         const isFocused = c.label === focusedClusterLabel;
         const isHovered = !inGalaxyMode && c.label === hoveredClusterLabel;
         const dim = focusedClusterLabel !== null && !isFocused;
