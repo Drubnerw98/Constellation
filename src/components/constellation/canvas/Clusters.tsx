@@ -38,6 +38,18 @@ export function ClusterGlows({
         const isHovered = !inGalaxyMode && c.label === hoveredClusterLabel;
         const visualR =
           c.radius * (isFocused ? 1.9 : isHovered ? 1.75 : 1.6);
+        // Glow opacity ramp: nearly invisible by default (the constellation
+        // lines now carry cluster identity), brightening on hover for a
+        // focus hint, full at focus when galaxy mode is active. Replaces
+        // the previous always-visible bubble that made the canvas read as
+        // a blob chart instead of a star chart.
+        const baseOpacity = isFocused
+          ? 1
+          : isHovered
+            ? 0.55
+            : dim
+              ? 0.02
+              : 0.1;
         return (
           <g key={c.label}>
             <circle
@@ -45,7 +57,7 @@ export function ClusterGlows({
               cy={c.centerY}
               r={visualR}
               fill={`url(#cluster-grad-${i})`}
-              opacity={dim ? 0.18 : 1}
+              opacity={baseOpacity}
               style={{
                 pointerEvents: "none",
                 // Decisive ease + slower duration so glow growth on hover
@@ -107,33 +119,35 @@ export function ClusterLabels({
     <g className="cluster-labels">
       {clusters.map((c) => {
         const lines = wrapClusterLabel(c.label);
-        const lineHeight = 14;
-        const dx = c.centerX - CANVAS_W / 2;
-        const dy = c.centerY - CANVAS_H / 2;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        const ux = dx / dist;
-        const uy = dy / dist;
-        // Push labels further out from cluster edges (was +70). Combined
-        // with the reorder to render labels above nodes, this gets text
-        // off the dense node area entirely while still reading as
-        // attached to its cluster.
-        const labelDist = dist + c.radius + 95;
-        // Top margin reserves space for the chrome strip (SiteMark + Compare
-        // versions link + UserButton) which has no opaque backdrop and would
-        // otherwise read as cluster-label-through-text on initial render.
+        const lineHeight = 16;
+        // Anchor each label below its cluster's centroid by a fixed
+        // multiple of the cluster radius — different cluster centerX
+        // positions naturally give different label X positions, which
+        // dissolves the previous label-on-label overlap that came from
+        // labels stacking on the same radial axis from the canvas center.
+        // When the cluster sits near the bottom of the canvas, flip the
+        // anchor above the cluster instead.
+        const labelGap = 28;
+        const wantBelow = c.centerY < CANVAS_H * 0.72;
+        const labelX = c.centerX;
+        const baseY = wantBelow
+          ? c.centerY + c.radius + labelGap
+          : c.centerY - c.radius - labelGap;
+        // Clamp inside the canvas with a comfortable margin so labels
+        // never crowd the page chrome.
         const topMargin = 80;
-        const sideMargin = 16;
-        let labelX = CANVAS_W / 2 + ux * labelDist;
-        let labelY = CANVAS_H / 2 + uy * labelDist;
+        const sideMargin = 80;
         const halfBlock = ((lines.length - 1) * lineHeight) / 2;
+        let labelY = baseY;
         if (labelY - halfBlock < topMargin) labelY = topMargin + halfBlock;
-        if (labelY + halfBlock > CANVAS_H - sideMargin)
-          labelY = CANVAS_H - sideMargin - halfBlock;
-        if (labelX < sideMargin + 80) labelX = sideMargin + 80;
-        if (labelX > CANVAS_W - sideMargin - 80)
-          labelX = CANVAS_W - sideMargin - 80;
-        const textAnchor =
-          ux > 0.4 ? "start" : ux < -0.4 ? "end" : "middle";
+        if (labelY + halfBlock > CANVAS_H - 60)
+          labelY = CANVAS_H - 60 - halfBlock;
+        const textAnchor: "start" | "middle" | "end" =
+          labelX < sideMargin
+            ? "start"
+            : labelX > CANVAS_W - sideMargin
+              ? "end"
+              : "middle";
         const isFocused = c.label === focusedClusterLabel;
         const isHovered = !inGalaxyMode && c.label === hoveredClusterLabel;
         const dim = focusedClusterLabel !== null && !isFocused;

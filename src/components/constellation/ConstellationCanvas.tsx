@@ -19,14 +19,21 @@ import {
   Vignette,
 } from "./canvas/BackgroundLayers";
 import { ClusterGlows, ClusterLabels } from "./canvas/Clusters";
-import { Edges, NodeHalos, Nodes } from "./canvas/Graph";
+import {
+  ConstellationLines,
+  Edges,
+  NodeHalos,
+  Nodes,
+} from "./canvas/Graph";
 import { NodeTooltip, ResetButton, SelectedRing } from "./canvas/Overlays";
 import {
   CANVAS_H,
   CANVAS_W,
+  computeClusterMST,
   primaryClusterFor,
   seededStars,
   useAntiStars,
+  type ConstellationEdge,
 } from "./canvas/helpers";
 import {
   useForceSimulation,
@@ -153,6 +160,33 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
     );
     useNodeDrag(svgRef, simRef, graph, prefersReducedMotion);
     const { zoomBehaviorRef } = useZoomBehavior(svgRef, setTransform);
+
+    // Constellation lines — per-cluster MST. Computed once after the force
+    // simulation has had time to settle initial positions (1.2s after
+    // mount), then frozen. Endpoints still update with current node
+    // positions on every render, but the topology of the figure stays
+    // stable so the constellation doesn't twitch as nodes drift.
+    const [linesByCluster, setLinesByCluster] = useState<
+      Map<string, ConstellationEdge[]>
+    >(new Map());
+    useEffect(() => {
+      const timer = window.setTimeout(() => {
+        const next = new Map<string, ConstellationEdge[]>();
+        for (const c of graph.clusters) {
+          const members = c.memberNodeIds
+            .map((id) => nodeById.get(id))
+            .filter((n): n is GraphNode => n !== undefined);
+          next.set(c.label, computeClusterMST(members));
+        }
+        setLinesByCluster(next);
+      }, 1200);
+      return () => window.clearTimeout(timer);
+    }, [graph.clusters, nodeById]);
+
+    const colorByCluster = useMemo(
+      () => new Map(graph.clusters.map((c) => [c.label, c.color])),
+      [graph.clusters],
+    );
 
     // Mirror focused cluster state up to the parent so it can render the
     // cluster info panel.
@@ -342,6 +376,20 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               onFocusCluster={flyToCluster}
               onClusterEnter={handleClusterEnter}
               onClusterLeave={handleClusterLeave}
+            />
+            {/* Constellation lines — per-cluster MST drawn under the member
+                stars so each theme reads as a connected figure rather than
+                a blob. The primary visual carrier of cluster identity now
+                that the cluster-glow bubble is recessed to a hover/focus
+                state indicator. */}
+            <ConstellationLines
+              linesByCluster={linesByCluster}
+              nodeById={nodeById}
+              colorByCluster={colorByCluster}
+              focusedClusterLabel={focusedClusterLabel}
+              hoveredClusterLabel={hoveredClusterLabel}
+              inGalaxyMode={inGalaxyMode}
+              prefersReducedMotion={prefersReducedMotion}
             />
             <Edges
               edges={edges}

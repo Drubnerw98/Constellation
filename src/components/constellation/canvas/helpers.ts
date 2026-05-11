@@ -108,6 +108,78 @@ export function primaryClusterFor(
 }
 
 /**
+ * Per-cluster minimum spanning tree. Given the member nodes of one cluster,
+ * returns N-1 (sourceId, targetId) pairs forming a tree where every member
+ * is connected by exactly one path of shortest total edge length.
+ *
+ * This is the topology behind the "constellation lines" — each theme reads
+ * as a connected figure (like Orion's belt) rather than a fuzzy bag of
+ * stars. Kruskal's with union-find: O(E log E) where E = N(N-1)/2 pairs,
+ * which at typical cluster sizes (5-15 members) is trivial.
+ *
+ * Topology is computed once with current node positions; the line endpoints
+ * then track member positions every render so lines follow members as the
+ * force-sim settles. The structure stays stable even if a node drifts a
+ * little since the relative ordering of pairwise distances rarely flips.
+ */
+export interface ConstellationEdge {
+  sourceId: string;
+  targetId: string;
+}
+
+export function computeClusterMST(
+  members: ReadonlyArray<{ id: string; x?: number; y?: number }>,
+): ConstellationEdge[] {
+  if (members.length < 2) return [];
+  // Collect all pairwise distances with a stable order.
+  type Pair = { i: number; j: number; d: number };
+  const pairs: Pair[] = [];
+  for (let i = 0; i < members.length; i++) {
+    const a = members[i]!;
+    const ax = a.x ?? 0;
+    const ay = a.y ?? 0;
+    for (let j = i + 1; j < members.length; j++) {
+      const b = members[j]!;
+      const bx = b.x ?? 0;
+      const by = b.y ?? 0;
+      const dx = ax - bx;
+      const dy = ay - by;
+      pairs.push({ i, j, d: dx * dx + dy * dy });
+    }
+  }
+  pairs.sort((p, q) => p.d - q.d);
+
+  // Union-find for cycle detection.
+  const parent = Array.from({ length: members.length }, (_, i) => i);
+  const find = (x: number): number => {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]!]!;
+      x = parent[x]!;
+    }
+    return x;
+  };
+  const union = (x: number, y: number): boolean => {
+    const rx = find(x);
+    const ry = find(y);
+    if (rx === ry) return false;
+    parent[rx] = ry;
+    return true;
+  };
+
+  const edges: ConstellationEdge[] = [];
+  for (const { i, j } of pairs) {
+    if (union(i, j)) {
+      edges.push({
+        sourceId: members[i]!.id,
+        targetId: members[j]!.id,
+      });
+      if (edges.length === members.length - 1) break;
+    }
+  }
+  return edges;
+}
+
+/**
  * Split a long cluster label into at most two lines, breaking at the word
  * boundary closest to the midpoint character count.
  */

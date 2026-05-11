@@ -1,6 +1,87 @@
 import type { GraphEdge, GraphNode, ThemeCluster } from "../../../types/graph";
-import { NODE_RADIUS, nodeSizeMultiplier } from "./helpers";
+import {
+  NODE_RADIUS,
+  nodeSizeMultiplier,
+  type ConstellationEdge,
+} from "./helpers";
 import { nodeGlyph } from "./glyph";
+
+interface ConstellationLinesProps {
+  /** Per-cluster MST edges, keyed by cluster label. */
+  linesByCluster: Map<string, ConstellationEdge[]>;
+  /** Look up live node positions by id. */
+  nodeById: Map<string, GraphNode>;
+  /** Per-cluster color, keyed by cluster label. */
+  colorByCluster: Map<string, string>;
+  focusedClusterLabel: string | null;
+  hoveredClusterLabel: string | null;
+  inGalaxyMode: boolean;
+  prefersReducedMotion: boolean;
+}
+
+/**
+ * Constellation lines — per-theme MST drawn under the member stars. These
+ * are the structural visual: each theme becomes a connected figure (like
+ * Orion or the Big Dipper) instead of a colored cluster blob. Lines track
+ * current node positions every render so they follow the slow drift of the
+ * force-simulation; the MST topology itself is computed upstream and held
+ * stable so the figure shape doesn't twitch on every tick.
+ *
+ * Stroke is the cluster's color at low opacity; line width tapers to a
+ * hairline so multiple lines per cluster don't collectively overwhelm the
+ * star field. Focused cluster brightens; other clusters dim — same visual
+ * grammar as the original cluster-glow state.
+ */
+export function ConstellationLines({
+  linesByCluster,
+  nodeById,
+  colorByCluster,
+  focusedClusterLabel,
+  hoveredClusterLabel,
+  inGalaxyMode,
+  prefersReducedMotion,
+}: ConstellationLinesProps) {
+  return (
+    <g className="constellation-lines" style={{ pointerEvents: "none" }}>
+      {Array.from(linesByCluster.entries()).flatMap(([label, edges]) => {
+        const color = colorByCluster.get(label) ?? "#9aa4b2";
+        const isFocused = label === focusedClusterLabel;
+        const isHovered = !inGalaxyMode && label === hoveredClusterLabel;
+        const dim = focusedClusterLabel !== null && !isFocused;
+        const opacity = isFocused
+          ? 0.7
+          : isHovered
+            ? 0.55
+            : dim
+              ? 0.08
+              : 0.32;
+        return edges.map((edge, i) => {
+          const s = nodeById.get(edge.sourceId);
+          const t = nodeById.get(edge.targetId);
+          if (!s || !t || s.x === undefined || t.x === undefined) return null;
+          return (
+            <line
+              key={`${label}-${i}`}
+              x1={s.x}
+              y1={s.y ?? 0}
+              x2={t.x}
+              y2={t.y ?? 0}
+              stroke={color}
+              strokeOpacity={opacity}
+              strokeWidth={0.7}
+              strokeLinecap="round"
+              style={{
+                transition: prefersReducedMotion
+                  ? "none"
+                  : "stroke-opacity 320ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              }}
+            />
+          );
+        });
+      })}
+    </g>
+  );
+}
 
 interface EdgesProps {
   edges: GraphEdge[];
