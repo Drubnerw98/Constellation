@@ -188,6 +188,26 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
       [graph.clusters],
     );
 
+    // Set of node-pair keys already drawn by a cluster MST. Cross-cluster
+    // edges look up against this so we don't render a curved bezier on top
+    // of a straight MST line for the same two nodes — that was the source
+    // of the "doubled connection" effect when a pair shared multiple
+    // themes. Active edges (selected / hovered) still draw on top to
+    // preserve the focus highlight.
+    const mstPairs = useMemo(() => {
+      const set = new Set<string>();
+      for (const edges of linesByCluster.values()) {
+        for (const e of edges) {
+          const key =
+            e.sourceId < e.targetId
+              ? `${e.sourceId}--${e.targetId}`
+              : `${e.targetId}--${e.sourceId}`;
+          set.add(key);
+        }
+      }
+      return set;
+    }, [linesByCluster]);
+
     // Mirror focused cluster state up to the parent so it can render the
     // cluster info panel.
     useEffect(() => {
@@ -389,6 +409,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               focusedClusterLabel={focusedClusterLabel}
               hoveredClusterLabel={hoveredClusterLabel}
               inGalaxyMode={inGalaxyMode}
+              showAllConnections={showAllConnections}
               prefersReducedMotion={prefersReducedMotion}
             />
             <Edges
@@ -404,6 +425,7 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               inFocusedCluster={inFocusedCluster}
               inHoveredCluster={inHoveredCluster}
               matchesFormat={matchesFormat}
+              mstPairs={mstPairs}
               prefersReducedMotion={prefersReducedMotion}
             />
             <NodeHalos {...nodeLayerProps} />

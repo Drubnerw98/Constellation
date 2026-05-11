@@ -16,6 +16,10 @@ interface ConstellationLinesProps {
   focusedClusterLabel: string | null;
   hoveredClusterLabel: string | null;
   inGalaxyMode: boolean;
+  /** When the user has the "show all connections" toggle on, the cross-
+   * cluster edge web takes over as primary visual; MST lines yield to it
+   * so the two layers don't compete. */
+  showAllConnections: boolean;
   prefersReducedMotion: boolean;
 }
 
@@ -39,6 +43,7 @@ export function ConstellationLines({
   focusedClusterLabel,
   hoveredClusterLabel,
   inGalaxyMode,
+  showAllConnections,
   prefersReducedMotion,
 }: ConstellationLinesProps) {
   return (
@@ -48,13 +53,20 @@ export function ConstellationLines({
         const isFocused = label === focusedClusterLabel;
         const isHovered = !inGalaxyMode && label === hoveredClusterLabel;
         const dim = focusedClusterLabel !== null && !isFocused;
-        const opacity = isFocused
+        let opacity = isFocused
           ? 0.7
           : isHovered
             ? 0.55
             : dim
               ? 0.08
-              : 0.32;
+              : 0.38;
+        // When the cross-cluster web is the active display mode, recess
+        // the constellation lines so the two layers don't fight. The
+        // figure shape is still visible (~0.18), but cross-cluster takes
+        // the primary role.
+        if (showAllConnections && !isFocused && !isHovered) {
+          opacity = 0.18;
+        }
         return edges.map((edge, i) => {
           const s = nodeById.get(edge.sourceId);
           const t = nodeById.get(edge.targetId);
@@ -68,7 +80,7 @@ export function ConstellationLines({
               y2={t.y ?? 0}
               stroke={color}
               strokeOpacity={opacity}
-              strokeWidth={0.7}
+              strokeWidth={1}
               strokeLinecap="round"
               style={{
                 transition: prefersReducedMotion
@@ -96,6 +108,12 @@ interface EdgesProps {
   inFocusedCluster: (id: string) => boolean;
   inHoveredCluster: (id: string) => boolean;
   matchesFormat: (id: string) => boolean;
+  /** Node-pair keys already drawn by the constellation-line MST layer.
+   * Cross-cluster bezier edges skip these pairs in default state to avoid
+   * drawing two lines (one straight MST, one curved bezier) between the
+   * same nodes. Active edges (selected/hovered focus) still render to
+   * preserve the highlight. */
+  mstPairs: Set<string>;
   prefersReducedMotion: boolean;
 }
 
@@ -118,6 +136,7 @@ export function Edges({
   inFocusedCluster,
   inHoveredCluster,
   matchesFormat,
+  mstPairs,
   prefersReducedMotion,
 }: EdgesProps) {
   return (
@@ -134,6 +153,13 @@ export function Edges({
         }
         const active = isEdgeActive(s.id, t.id);
         const dimmed = isEdgeDimmed(s.id, t.id);
+        // Skip drawing a curved bezier when the constellation MST already
+        // draws a straight line between this same pair — unless the edge
+        // is actively highlighted (selected/hovered focus), in which case
+        // the highlight needs the bezier to render on top of everything.
+        const pairKey =
+          s.id < t.id ? `${s.id}--${t.id}` : `${t.id}--${s.id}`;
+        if (!active && mstPairs.has(pairKey)) return null;
         const galaxyDim =
           inGalaxyMode &&
           !(inFocusedCluster(s.id) && inFocusedCluster(t.id));
