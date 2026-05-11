@@ -42,7 +42,7 @@ constellation/
 │   │   │       ├── BackgroundLayers.tsx   # Defs + Nebula + Starfield + Flares + AntiStars
 │   │   │       ├── Clusters.tsx           # ClusterGlows + ClusterLabels
 │   │   │       ├── Graph.tsx              # Edges + NodeHalos + Nodes
-│   │   │       └── Overlays.tsx           # SelectedRing + NodeTooltip + ResetButton
+│   │   │       └── Overlays.tsx           # SelectedRing + HoverLabels + ResetButton
 │   │   └── controls/
 │   │       ├── FilterBar.tsx              # format toggles
 │   │       └── SearchInput.tsx            # title search with pan-to-node
@@ -261,23 +261,28 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
     <g className="node-halos">            {/* blurred glow circles behind nodes */}
     <g className="nodes">                 {/* per-format glyphs */}
     <g className="cluster-labels">        {/* labels painted on top so node drift
-                                              never buries them */}
+                                              never buries them; collision-resolved */}
+    <HoverLabels/>                        {/* in-canvas hover labels for focused
+                                              node + connected neighbors */}
   </g>
 
   {selectedNode && <circle/>}            {/* dashed selection ring (outside zoom layer) */}
-  {hoveredNode && <foreignObject/>}      {/* tooltip (outside zoom layer) */}
   <Vignette/>                            {/* fixed-viewport edge darken */}
   <Reset button>                          {/* HTML overlay */}
 </svg>
 ```
 
-**Constellation lines as primary cluster visual.** Each theme's members are connected by a minimum spanning tree (Kruskal's with union-find, computed once 1.2s post-mount in `useEffect`, then frozen — `computeClusterMST` in `canvas/helpers.ts`). The line endpoints track current node positions every render so they follow the slow drift of the force-sim, but the topology stays stable so the figure shape doesn't twitch. This reads as a star chart: each theme is a connected asterism rather than a colored bubble. The previous always-visible cluster-glow bubble created a "blob chart" feel; recessing it solved that.
+**Constellation lines as primary cluster visual.** Each theme's members are connected by a minimum spanning tree (Kruskal's with union-find, computed once ~450ms post-mount in `useEffect` (250ms with `prefers-reduced-motion`), then frozen — `computeClusterMST` in `canvas/helpers.ts`. Previous 1.2s delay was conservative and left the canvas visibly empty of constellation lines on first paint). The line endpoints track current node positions every render so they follow the slow drift of the force-sim, but the topology stays stable so the figure shape doesn't twitch. Each segment is rendered as a quadratic-bezier with a deterministic perpendicular offset seeded by the pair (`curveSeed`), so the figure reads hand-drawn rather than geometric — short edges stay nearly straight, long ones bow more visibly. This reads as a star chart: each theme is a connected asterism rather than a colored bubble. The previous always-visible cluster-glow bubble created a "blob chart" feel; recessing it solved that.
 
 **Dedup against cross-cluster edges.** When an MST line connects the same pair of nodes as a cross-cluster bezier edge (typical when two nodes share more than one theme), the bezier skips drawing unless the edge is actively highlighted. A shared `mstPairs: Set<string>` of normalized pair keys flows from the parent into `<Edges>` for the check.
 
 **Cluster glow as focus-state indicator.** The cluster gradient circles still render but default to ~0.10 opacity. Hover bumps to 0.55, focus (galaxy mode) to 1.0. Now a hint of "where the cluster lives" without competing with the constellation lines as the primary carrier of cluster identity.
 
-**Why selection ring + tooltip live OUTSIDE the zoom layer:** they should NOT scale with zoom. Their position is computed via `transform.applyX(node.x)` so they track the zoomed node position, but their size and stroke width stay constant in screen pixels.
+**Why the selection ring lives OUTSIDE the zoom layer:** it should NOT scale with zoom. Its position is computed via `transform.applyX(node.x)` so it tracks the zoomed node position, but stroke width stays constant in screen pixels.
+
+**Hover labels (`HoverLabels` in `canvas/Overlays.tsx`)** render INSIDE the zoom layer as plain SVG `<text>`, anchored just to the right of each node (or to the left when the node sits past 75% of canvas width). The hovered or selected node gets a primary-weight label; every connected neighbor surfaces its title at the same time at a quieter weight, so a node's web is scannable in-place without opening the side panel. Painted in the last sublayer of the zoom group so labels sit on top of nodes and constellation lines. Replaces the previous corner-snap `<foreignObject>` tooltip, which floated to canvas corners and read as detached when the hovered node was anywhere except near an edge.
+
+**Cluster-label collision pass.** `ClusterLabels` pre-computes each label's anchor position (below the cluster centroid, flipped above for clusters near the bottom edge) and then runs a short iterative repulsion sweep: pairs with overlapping bounding boxes nudge apart vertically (3 passes is plenty at typical cluster counts of 6-8). Stops cluster names from stacking on each other when the spiral seed places two clusters in roughly the same vertical band.
 
 **Why split cluster glow into visual + hit circles:** cluster glow circles have `pointerEvents:none` and a large radius (the visual). A separate, smaller (`min(radius, 110)px`) invisible circle handles hover hit-detection. Without this split, mousemoves between adjacent clusters' overlapping glows triggered constant hover-flicker.
 
