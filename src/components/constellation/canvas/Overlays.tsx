@@ -1,6 +1,6 @@
 import type * as d3 from "d3";
 import type { GraphNode } from "../../../types/graph";
-import { CANVAS_H, CANVAS_W, NODE_RADIUS, nodeSizeMultiplier } from "./helpers";
+import { NODE_RADIUS, nodeSizeMultiplier } from "./helpers";
 
 /**
  * Dashed ring around the selected node. Lives outside the zoom layer so
@@ -33,51 +33,94 @@ export function SelectedRing({
 }
 
 /**
- * Hover tooltip with title, format/year, rating or match score. Same
- * out-of-zoom-layer pattern as `<SelectedRing>`. Auto-flips placement to
- * keep the tooltip on-canvas.
+ * In-canvas hover labels for the focused node and its connected neighbors.
+ *
+ * Kevin's UX feedback on 2026-05-11: the previous tooltip floated to the
+ * canvas corner (foreignObject + corner-snap) which read as detached when
+ * the hovered node sat anywhere except near a corner. This implementation
+ * renders SVG text right next to each node so the title visually attaches
+ * to its star, and surfaces the connected neighbors' titles at the same
+ * time so the user can scan a node's web without opening the side panel.
+ *
+ * Rendered INSIDE the zoom layer so labels track pan/zoom with their
+ * nodes. Painted last in the layer order so labels sit on top of every
+ * other element.
  */
-export function NodeTooltip({
-  node,
-  transform,
+export function HoverLabels({
+  hoveredNode,
+  selectedNode,
+  neighborIds,
+  nodeById,
 }: {
-  node: GraphNode | null;
-  transform: d3.ZoomTransform;
+  hoveredNode: GraphNode | null;
+  selectedNode: GraphNode | null;
+  neighborIds: ReadonlySet<string>;
+  nodeById: ReadonlyMap<string, GraphNode>;
 }) {
-  if (!node) return null;
-  const TOOLTIP_W = 220;
-  const TOOLTIP_H = 60;
-  const OFFSET = 14;
-  const nx = transform.applyX(node.x ?? 0);
-  const ny = transform.applyY(node.y ?? 0);
-  const placeRight = nx < CANVAS_W / 2;
-  const placeBelow = ny < CANVAS_H / 2;
-  const tx = placeRight ? nx + OFFSET : nx - OFFSET - TOOLTIP_W;
-  const ty = placeBelow ? ny + OFFSET : ny - OFFSET - TOOLTIP_H;
+  // Hover wins over selection — when the user is actively pointing at a
+  // node, that's the conversation; selection is the persistent pin.
+  const primary = hoveredNode ?? selectedNode;
+  if (!primary) return null;
+
+  const neighbors: GraphNode[] = [];
+  for (const id of neighborIds) {
+    const n = nodeById.get(id);
+    if (n) neighbors.push(n);
+  }
+
   return (
-    <foreignObject
+    <g style={{ pointerEvents: "none" }}>
+      {neighbors.map((n) => (
+        <NodeLabel key={`neighbor-${n.id}`} node={n} variant="neighbor" />
+      ))}
+      <NodeLabel node={primary} variant="primary" />
+    </g>
+  );
+}
+
+/**
+ * One node's hover label. Anchored just to the right of the node and
+ * vertically centered. Falls back to the left side when the node sits in
+ * the right third of the canvas so a label near the edge doesn't get
+ * clipped. Filtered by a label-shadow for legibility against any color
+ * underneath.
+ */
+function NodeLabel({
+  node,
+  variant,
+}: {
+  node: GraphNode;
+  variant: "primary" | "neighbor";
+}) {
+  const nx = node.x ?? 0;
+  const ny = node.y ?? 0;
+  const r = NODE_RADIUS * 2 * nodeSizeMultiplier(node);
+  // Place label to the right by default; flip to the left when the node
+  // sits past 75% of canvas width.
+  const placeLeft = nx > 900;
+  const tx = nx + (placeLeft ? -r - 6 : r + 6);
+  const anchor: "start" | "end" = placeLeft ? "end" : "start";
+  return (
+    <text
       x={tx}
-      y={ty}
-      width={TOOLTIP_W}
-      height={TOOLTIP_H}
-      style={{ overflow: "visible", pointerEvents: "none" }}
+      y={ny}
+      textAnchor={anchor}
+      dominantBaseline="central"
+      filter="url(#label-shadow)"
+      style={{
+        fontFamily:
+          "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        fontSize: variant === "primary" ? 13 : 11,
+        fontWeight: variant === "primary" ? 600 : 400,
+        fill: variant === "primary" ? "#f8fafc" : "#cbd5e1",
+        paintOrder: "stroke",
+        stroke: "rgba(5, 6, 10, 0.85)",
+        strokeWidth: variant === "primary" ? 4 : 3,
+        strokeLinejoin: "round",
+      }}
     >
-      <div
-        className="rounded-md border border-white/10 bg-[#0b0f1a]/95 px-3 py-1.5 text-xs leading-relaxed text-zinc-200 shadow-xl backdrop-blur"
-        style={{ width: "fit-content", maxWidth: 220 }}
-      >
-        <div className="text-sm font-medium text-white">{node.title}</div>
-        <div className="mt-0.5 text-[11px] text-zinc-400">
-          {node.mediaType}
-          {node.year ? ` · ${node.year}` : ""}
-          {node.rating !== null
-            ? ` · ${node.rating}★`
-            : node.matchScore !== null
-              ? ` · ${Math.round(node.matchScore * 100)}% match`
-              : ""}
-        </div>
-      </div>
-    </foreignObject>
+      {node.title}
+    </text>
   );
 }
 

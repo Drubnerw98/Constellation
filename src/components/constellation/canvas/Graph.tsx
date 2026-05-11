@@ -37,6 +37,19 @@ interface ConstellationLinesProps {
  * star field. Focused cluster brightens; other clusters dim — same visual
  * grammar as the original cluster-glow state.
  */
+/** Deterministic 0..1 value derived from two node ids so the constellation
+ * lines curve consistently across renders. Pair order is normalized so the
+ * same edge produces the same seed regardless of source/target ordering. */
+function curveSeed(a: string, b: string): number {
+  const k = a < b ? `${a}|${b}` : `${b}|${a}`;
+  let h = 2166136261;
+  for (let i = 0; i < k.length; i++) {
+    h = (h ^ k.charCodeAt(i)) >>> 0;
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return (h % 10000) / 10000;
+}
+
 export function ConstellationLines({
   linesByCluster,
   nodeById,
@@ -78,13 +91,31 @@ export function ConstellationLines({
           const s = nodeById.get(edge.sourceId);
           const t = nodeById.get(edge.targetId);
           if (!s || !t || s.x === undefined || t.x === undefined) return null;
+          const sx = s.x;
+          const sy = s.y ?? 0;
+          const tx = t.x;
+          const ty = t.y ?? 0;
+          // Slight curve so the constellation lines feel hand-drawn rather
+          // than geometric. The perpendicular offset is seeded by the edge
+          // endpoints so it stays stable across renders — pairs always
+          // curve the same direction and amount. Magnitude scales as a
+          // small fraction of edge length so short edges stay nearly
+          // straight and long edges bow more visibly.
+          const seed = curveSeed(edge.sourceId, edge.targetId);
+          const dx = tx - sx;
+          const dy = ty - sy;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len;
+          const ny = dx / len;
+          const offset = (seed - 0.5) * Math.min(len * 0.12, 22);
+          const mx = (sx + tx) / 2 + nx * offset;
+          const my = (sy + ty) / 2 + ny * offset;
+          const d = `M ${sx} ${sy} Q ${mx} ${my} ${tx} ${ty}`;
           return (
-            <line
+            <path
               key={`${label}-${i}`}
-              x1={s.x}
-              y1={s.y ?? 0}
-              x2={t.x}
-              y2={t.y ?? 0}
+              d={d}
+              fill="none"
               stroke={color}
               strokeOpacity={opacity}
               strokeWidth={1}

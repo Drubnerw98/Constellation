@@ -25,7 +25,7 @@ import {
   NodeHalos,
   Nodes,
 } from "./canvas/Graph";
-import { NodeTooltip, ResetButton, SelectedRing } from "./canvas/Overlays";
+import { HoverLabels, ResetButton, SelectedRing } from "./canvas/Overlays";
 import {
   CANVAS_H,
   CANVAS_W,
@@ -159,26 +159,41 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
     const { zoomBehaviorRef } = useZoomBehavior(svgRef, setTransform);
 
     // Constellation lines — per-cluster MST. Computed once after the force
-    // simulation has had time to settle initial positions (1.2s after
-    // mount), then frozen. Endpoints still update with current node
-    // positions on every render, but the topology of the figure stays
-    // stable so the constellation doesn't twitch as nodes drift.
+    // simulation has had time to settle initial positions, then frozen.
+    // Endpoints still update with current node positions on every render,
+    // but the topology of the figure stays stable so the constellation
+    // doesn't twitch as nodes drift.
+    //
+    // Settle delay tuned down from 1.2s to 450ms (250ms with reduced
+    // motion) — the spiral seed + 180-tick force-resolve in
+    // useForceSimulation gets nodes most of the way to rest by ~400ms.
+    // The previous 1.2s was conservative and left the canvas visibly
+    // "empty" of constellation lines on startup. requestAnimationFrame
+    // chains to the next paint after the timer fires so the MST compute
+    // doesn't run on the same task as React's initial render.
     const [linesByCluster, setLinesByCluster] = useState<
       Map<string, ConstellationEdge[]>
     >(new Map());
     useEffect(() => {
+      const settleMs = prefersReducedMotion ? 250 : 450;
+      let raf = 0;
       const timer = window.setTimeout(() => {
-        const next = new Map<string, ConstellationEdge[]>();
-        for (const c of graph.clusters) {
-          const members = c.memberNodeIds
-            .map((id) => nodeById.get(id))
-            .filter((n): n is GraphNode => n !== undefined);
-          next.set(c.label, computeClusterMST(members));
-        }
-        setLinesByCluster(next);
-      }, 1200);
-      return () => window.clearTimeout(timer);
-    }, [graph.clusters, nodeById]);
+        raf = window.requestAnimationFrame(() => {
+          const next = new Map<string, ConstellationEdge[]>();
+          for (const c of graph.clusters) {
+            const members = c.memberNodeIds
+              .map((id) => nodeById.get(id))
+              .filter((n): n is GraphNode => n !== undefined);
+            next.set(c.label, computeClusterMST(members));
+          }
+          setLinesByCluster(next);
+        });
+      }, settleMs);
+      return () => {
+        window.clearTimeout(timer);
+        if (raf) window.cancelAnimationFrame(raf);
+      };
+    }, [graph.clusters, nodeById, prefersReducedMotion]);
 
     const colorByCluster = useMemo(
       () => new Map(graph.clusters.map((c) => [c.label, c.color])),
@@ -453,6 +468,15 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
               onClusterEnter={handleClusterEnter}
               onClusterLeave={handleClusterLeave}
             />
+            {/* In-canvas hover labels for the focused node + its connected
+                neighbors. Inside the zoom layer so titles track pan/zoom
+                with their nodes. Painted last so labels sit on top. */}
+            <HoverLabels
+              hoveredNode={hoveredNode}
+              selectedNode={selectedNode}
+              neighborIds={focusNeighbors}
+              nodeById={nodeById}
+            />
           </g>
 
           <SelectedRing
@@ -464,7 +488,6 @@ export const ConstellationCanvas = forwardRef<ConstellationCanvasHandle, Props>(
                 : "#fefce8"
             }
           />
-          <NodeTooltip node={hoveredNode} transform={transform} />
           {/* Vignette sits outside the zoom-layer so it stays anchored to
               the viewport regardless of pan/zoom — the porthole effect. */}
           <Vignette />

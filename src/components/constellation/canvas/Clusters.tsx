@@ -115,33 +115,74 @@ export function ClusterLabels({
   onClusterEnter: (label: string) => void;
   onClusterLeave: (label: string) => void;
 }) {
+  // Pre-compute every label's anchor position once per render, then run
+  // a quick collision-resolution pass so labels that landed on top of
+  // each other in the original geometry nudge apart vertically.
+  const lineHeight = 16;
+  const labelGap = 28;
+  const topMargin = 80;
+  const sideMargin = 80;
+  type Placed = {
+    cluster: ThemeCluster;
+    lines: string[];
+    halfBlock: number;
+    x: number;
+    y: number;
+    height: number;
+    halfWidth: number;
+  };
+  const placed: Placed[] = clusters.map((c) => {
+    const lines = wrapClusterLabel(c.label);
+    const halfBlock = ((lines.length - 1) * lineHeight) / 2;
+    const wantBelow = c.centerY < CANVAS_H * 0.72;
+    const baseY = wantBelow
+      ? c.centerY + c.radius + labelGap
+      : c.centerY - c.radius - labelGap;
+    let y = baseY;
+    if (y - halfBlock < topMargin) y = topMargin + halfBlock;
+    if (y + halfBlock > CANVAS_H - 60) y = CANVAS_H - 60 - halfBlock;
+    const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
+    // Rough width estimate at 17px italic serif: ~9px per character. Good
+    // enough for collision detection; we don't need exact text metrics.
+    const halfWidth = (longest * 9) / 2;
+    return {
+      cluster: c,
+      lines,
+      halfBlock,
+      x: c.centerX,
+      y,
+      height: halfBlock * 2 + lineHeight,
+      halfWidth,
+    };
+  });
+  // Iterative pass: nudge labels apart when their boxes overlap. Two
+  // sweeps is usually plenty at typical cluster counts (6-8).
+  for (let pass = 0; pass < 3; pass++) {
+    placed.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < placed.length; i++) {
+      const a = placed[i - 1]!;
+      const b = placed[i]!;
+      const dx = Math.abs(a.x - b.x);
+      const horizontalOverlap = dx < a.halfWidth + b.halfWidth + 6;
+      if (!horizontalOverlap) continue;
+      const need = (a.height + b.height) / 2 + 4;
+      const dy = b.y - a.y;
+      if (dy < need) {
+        const push = (need - dy) / 2;
+        a.y = Math.max(topMargin + a.halfBlock, a.y - push);
+        b.y = Math.min(CANVAS_H - 60 - b.halfBlock, b.y + push);
+      }
+    }
+  }
+  const placedByLabel = new Map(placed.map((p) => [p.cluster.label, p]));
+
   return (
     <g className="cluster-labels">
       {clusters.map((c) => {
-        const lines = wrapClusterLabel(c.label);
-        const lineHeight = 16;
-        // Anchor each label below its cluster's centroid by a fixed
-        // multiple of the cluster radius — different cluster centerX
-        // positions naturally give different label X positions, which
-        // dissolves the previous label-on-label overlap that came from
-        // labels stacking on the same radial axis from the canvas center.
-        // When the cluster sits near the bottom of the canvas, flip the
-        // anchor above the cluster instead.
-        const labelGap = 28;
-        const wantBelow = c.centerY < CANVAS_H * 0.72;
-        const labelX = c.centerX;
-        const baseY = wantBelow
-          ? c.centerY + c.radius + labelGap
-          : c.centerY - c.radius - labelGap;
-        // Clamp inside the canvas with a comfortable margin so labels
-        // never crowd the page chrome.
-        const topMargin = 80;
-        const sideMargin = 80;
-        const halfBlock = ((lines.length - 1) * lineHeight) / 2;
-        let labelY = baseY;
-        if (labelY - halfBlock < topMargin) labelY = topMargin + halfBlock;
-        if (labelY + halfBlock > CANVAS_H - 60)
-          labelY = CANVAS_H - 60 - halfBlock;
+        const p = placedByLabel.get(c.label)!;
+        const { lines, halfBlock } = p;
+        const labelX = p.x;
+        const labelY = p.y;
         const textAnchor: "start" | "middle" | "end" =
           labelX < sideMargin
             ? "start"
