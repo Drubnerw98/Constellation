@@ -75,12 +75,12 @@ export function ConstellationLines({
         const isHovered = !inGalaxyMode && label === hoveredClusterLabel;
         const dim = focusedClusterLabel !== null && !isFocused;
         let opacity = isFocused
-          ? 0.7
+          ? 0.6
           : isHovered
-            ? 0.55
+            ? 0.45
             : dim
-              ? 0.08
-              : 0.38;
+              ? 0.05
+              : 0.22;
         // When the user has node focus active, the surviving MST (only the
         // focused node's cluster) shows at strong opacity so it reads as
         // the active context.
@@ -107,7 +107,10 @@ export function ConstellationLines({
           const len = Math.hypot(dx, dy) || 1;
           const nx = -dy / len;
           const ny = dx / len;
-          const offset = (seed - 0.5) * Math.min(len * 0.12, 22);
+          // Curve amplitude trimmed (was len * 0.12 / cap 22) — the bigger
+          // bow made dense clusters read as a tangle. A small offset still
+          // breaks the geometric grid feel without amplifying it.
+          const offset = (seed - 0.5) * Math.min(len * 0.06, 12);
           const mx = (sx + tx) / 2 + nx * offset;
           const my = (sy + ty) / 2 + ny * offset;
           const d = `M ${sx} ${sy} Q ${mx} ${my} ${tx} ${ty}`;
