@@ -40,7 +40,7 @@ constellation/
 │   │   │       ├── glyph.tsx              # per-format node glyph
 │   │   │       ├── hooks.ts               # useForceSimulation/NodeDrag/ZoomBehavior/Fade-in
 │   │   │       ├── BackgroundLayers.tsx   # Defs + Nebula + Starfield + Flares + AntiStars
-│   │   │       ├── Clusters.tsx           # ClusterGlows + ClusterLabels
+│   │   │       ├── Clusters.tsx           # ClusterGlows + HoverClusterLabel
 │   │   │       ├── Graph.tsx              # Edges + NodeHalos + Nodes
 │   │   │       └── Overlays.tsx           # SelectedRing + HoverLabels + ResetButton
 │   │   ├── ClusterLegend.tsx              # corner overlay: color swatch + theme list
@@ -278,7 +278,9 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
 </svg>
 ```
 
-**Constellation lines as primary cluster visual.** Each theme's members are connected by a minimum spanning tree (Kruskal's with union-find, computed once ~450ms post-mount in `useEffect` (250ms with `prefers-reduced-motion`), then frozen — `computeClusterMST` in `canvas/helpers.ts`. Previous 1.2s delay was conservative and left the canvas visibly empty of constellation lines on first paint). The line endpoints track current node positions every render so they follow the slow drift of the force-sim, but the topology stays stable so the figure shape doesn't twitch. Each segment is rendered as a quadratic-bezier with a deterministic perpendicular offset seeded by the pair (`curveSeed`), so the figure reads hand-drawn rather than geometric — short edges stay nearly straight, long ones bow more visibly. This reads as a star chart: each theme is a connected asterism rather than a colored bubble. The previous always-visible cluster-glow bubble created a "blob chart" feel; recessing it solved that.
+**Constellation lines: inspection texture, glow carries cluster identity.** Each theme's members are connected by a minimum spanning tree (Kruskal's with union-find, computed once ~450ms post-mount in `useEffect` (250ms with `prefers-reduced-motion`), then frozen — `computeClusterMST` in `canvas/helpers.ts`. Previous 1.2s delay was conservative and left the canvas visibly empty of constellation lines on first paint). The line endpoints track current node positions every render so they follow the slow drift of the force-sim, but the topology stays stable so the figure shape doesn't twitch. Each segment renders as a quadratic-bezier with a deterministic perpendicular offset seeded by the pair (`curveSeed`), so the figure reads hand-drawn rather than geometric — short edges stay nearly straight, long ones bow visibly.
+
+The 2026-05-10 design call put MST as the *primary* cluster identifier with cluster glow recessed to ~0.10. After Kevin's "messy when many nodes" pass on 2026-05-11 that reversed: cluster glow back up to 0.22 (default) so each theme reads as a quiet color zone first; MST opacity dropped to 0.12 (whisper, ramps to 0.45+ on hover/focus). MST edges shorter than 24 viewBox units are skipped entirely — close-paired stars read as grouped by proximity already, so the connector was adding clutter without information. Net effect: clusters identifiable by color zone at glance, MST visible as decorative texture, individual asterisms readable on hover or in galaxy mode.
 
 **Dedup against cross-cluster edges.** When an MST line connects the same pair of nodes as a cross-cluster bezier edge (typical when two nodes share more than one theme), the bezier skips drawing unless the edge is actively highlighted. A shared `mstPairs: Set<string>` of normalized pair keys flows from the parent into `<Edges>` for the check.
 
@@ -290,7 +292,7 @@ The SVG tree is built in stacking order — earlier layers paint underneath late
 
 **Cluster identity: hover label + corner legend, NO always-visible on-canvas labels.** Earlier passes tried always-visible labels with vertical-push collision, then angular placement with multi-axis scoring. Both failed on arbitrary profile shapes: labels either stacked on top of each other in dense vertical bands or drifted far from their clusters to avoid neighbors' glows. The current model splits the job:
 
-- **`ClusterLegend`** (HTML overlay, top-right) — color swatch + theme name list, always visible. Answers the at-a-glance "what are my themes?" question once per page load. Clicking a row mirrors clicking the cluster's glow on the canvas (calls `flyToCluster`); hovering a row highlights the corresponding cluster via the same `hoveredClusterLabel` pathway the canvas uses.
+- **`ClusterLegend`** (HTML overlay, top-left below the search input, md+ only) — color swatch + theme name list, collapsible via a chevron with localStorage-persisted open state. Answers the at-a-glance "what are my themes?" question once per page load. Clicking a row mirrors clicking the cluster's glow on the canvas (calls `flyToCluster`); hovering a row highlights the corresponding cluster via the same `hoveredClusterLabel` pathway the canvas uses. Initially top-right, moved to top-left after it collided with the Constellation wordmark.
 - **`HoverClusterLabel`** (SVG inside the zoom layer) — exactly one cluster's serif-italic name renders next to that cluster while it's hovered. One label at a time means there's nothing to collide with, so we can anchor it tightly to the cluster (`cluster.radius * 1.75 + labelGap` below, flipped above near the bottom edge) and have it scale with zoom.
 - **Bigger click target** — the cluster hit zone scaled from a fixed 55px to `cluster.radius` so the entire visible cluster area triggers `flyToCluster` reliably. The previous tight hit zone was a sneaky discoverability tax.
 
