@@ -44,13 +44,18 @@ export function ClusterGlows({
         // focus hint, full at focus when galaxy mode is active. Replaces
         // the previous always-visible bubble that made the canvas read as
         // a blob chart instead of a star chart.
+        // Glow opacity ramp. After Kevin's "messy when many nodes" pass on
+        // 2026-05-11, the default baseline was raised so glow carries
+        // cluster identity (quiet color zone) instead of relying solely
+        // on the MST lines, which read as a tangled web at high node
+        // counts. MSTs now whisper underneath.
         const baseOpacity = isFocused
           ? 1
           : isHovered
             ? 0.55
             : dim
-              ? 0.02
-              : 0.1;
+              ? 0.04
+              : 0.22;
         return (
           <g key={c.label}>
             <circle

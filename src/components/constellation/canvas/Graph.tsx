@@ -74,13 +74,17 @@ export function ConstellationLines({
         const isFocused = label === focusedClusterLabel;
         const isHovered = !inGalaxyMode && label === hoveredClusterLabel;
         const dim = focusedClusterLabel !== null && !isFocused;
+        // MST opacities dialed down 2026-05-11 after the dense-profile
+        // pass — they're decorative inspection texture now, not the
+        // primary cluster identifier. Glow carries that role; MST
+        // whispers underneath, ramping up on hover/focus.
         let opacity = isFocused
           ? 0.6
           : isHovered
             ? 0.45
             : dim
-              ? 0.05
-              : 0.22;
+              ? 0.03
+              : 0.12;
         // When the user has node focus active, the surviving MST (only the
         // focused node's cluster) shows at strong opacity so it reads as
         // the active context.
@@ -95,6 +99,15 @@ export function ConstellationLines({
           const sy = s.y ?? 0;
           const tx = t.x;
           const ty = t.y ?? 0;
+          // Short MST edges (nodes within ~24 viewBox units) read as
+          // visual clutter — the eye groups close stars by proximity
+          // already, so the connector adds noise without information.
+          // Skipping them de-tangles dense clusters; the MST becomes a
+          // forest of shorter trees but cluster identity is carried by
+          // glow + color anyway.
+          const skipDx = tx - sx;
+          const skipDy = ty - sy;
+          if (skipDx * skipDx + skipDy * skipDy < 24 * 24) return null;
           // Slight curve so the constellation lines feel hand-drawn rather
           // than geometric. The perpendicular offset is seeded by the edge
           // endpoints so it stays stable across renders — pairs always
