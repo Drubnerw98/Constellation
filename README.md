@@ -4,7 +4,7 @@
 
 **Live demo: [constellation-alpha-eight.vercel.app](https://constellation-alpha-eight.vercel.app)**
 
-A frontend-craft companion to [Resonance](https://github.com/Drubnerw98/Resonance), an AI recommendation engine that builds the structured taste profile this visualization renders. Both apps share a single Clerk OAuth instance; Constellation reads `/api/profile/export` from Resonance with a bearer token and transforms the response (a `TasteProfile` plus library items, recommendations, favorites, and avoidances) through a graph-builder pipeline before feeding it into a D3 force simulation rendered as SVG.
+A visualization layer over [Resonance](https://github.com/Drubnerw98/Resonance)'s structured taste profile, with non-trivial graph engineering — per-theme MST construction (Kruskal + union-find), three-tier fuzzy tag matching with cached normalizations, and a load-balanced primary-theme assignment that keeps the canvas readable as theme count grows. Both apps share a single Clerk OAuth instance; Constellation reads `/api/profile/export` from Resonance with a bearer token and transforms the response (a `TasteProfile` plus library items, recommendations, favorites, and avoidances) through a graph-builder pipeline before feeding it into a D3 force simulation rendered as SVG.
 
 For the architectural deep-dive (the *why* behind every major decision) see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
@@ -32,6 +32,8 @@ For the architectural deep-dive (the *why* behind every major decision) see **[A
 - **Editorial typography vocabulary.** IBM Plex Mono for chrome and mono captions, Iowan Old Style serif italic for in-canvas cluster labels (star-chart aesthetic). Semantic CSS color tokens, no `zinc-500` utility chains.
 - **Sample fallback.** Signed-out, no-profile, and API-error states all fall back to a curated sample profile (`/demo` route exposes it directly). Banner explains why on the fallback paths.
 - **Drift-on-rest.** `alphaTarget(0.03)` keeps the simulation gently ticking forever so nodes orbit slowly within their clusters. Disabled when `prefers-reduced-motion`.
+
+> **How this was built.** Built with Claude as a pair programmer in [Claude Code](https://docs.claude.com/en/docs/claude-code/overview). The implementation work is conversational; the architectural decisions are mine and logged in [`ARCHITECTURE.md`](./ARCHITECTURE.md) with reasoning. Every call in that file is one I can defend live. The depth here — the per-theme MST, the three-tier fuzzy match, the load-balanced primary-theme assignment — is the visible surface of those calls.
 
 ## Stack
 
